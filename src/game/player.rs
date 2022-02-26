@@ -1,7 +1,5 @@
 use std::collections::HashSet;
 
-use sdl2::keyboard::Keycode;
-
 use lentsys::ecs::components::collision::BoxCollider;
 use lentsys::ecs::components::collision::Collide;
 use lentsys::ecs::components::collision::Ray;
@@ -11,8 +9,9 @@ use lentsys::ppu::attr::TileAttr;
 
 use lentsys::lentsys::LentSysBus;
 
-use crate::game::{GameMode, GameState};
-use crate::sounds;
+use crate::game::state::{GameMode, GameState};
+use crate::game::sounds;
+use crate::game::input::{InputCode};
 
 #[derive(Debug)]
 pub enum PlayerState {
@@ -268,7 +267,7 @@ impl Player {
     //.skis.init(bus);
   }
 
-  pub fn update(&mut self, bus: &mut LentSysBus, keys: &HashSet<Keycode>, state: &mut GameState) {
+  pub fn update(&mut self, bus: &mut LentSysBus, keys: &HashSet<InputCode>, state: &mut GameState) {
     /*
       Roughly, the order should be
       - Inputs
@@ -285,7 +284,7 @@ impl Player {
       self.launcher.cooldown += 1;
     }
 
-    if keys.contains(&Keycode::A) {
+    if keys.contains(&InputCode::Fire) {
       match &state.game {
         GameMode::Buglympics => {
           move_speed = self.run_speed;
@@ -308,12 +307,12 @@ impl Player {
 
     match &self.player_state {
       PlayerState::Jumping => {
-        if keys.contains(&Keycode::Right) {
+        if keys.contains(&InputCode::Right) {
           self.vel_x += move_speed * self.accel_rate * self.air_control;
           bus.ppu.sprites[self.anim.sprite_id].reverse_x = false;
         }
 
-        if keys.contains(&Keycode::Left) {
+        if keys.contains(&InputCode::Left) {
           self.vel_x += -move_speed * self.accel_rate * self.air_control;
           bus.ppu.sprites[self.anim.sprite_id].reverse_x = true;
         }
@@ -327,25 +326,25 @@ impl Player {
       PlayerState::Standing => {
         self.vel_y *= 0.0;
 
-        if keys.contains(&Keycode::Right) {
+        if keys.contains(&InputCode::Right) {
           self.player_state = PlayerState::Walking;
           self.vel_x += move_speed * self.slope_accel * self.accel_rate;
           bus.ppu.sprites[self.anim.sprite_id].reverse_x = false;
         }
-        if keys.contains(&Keycode::Left) {
+        if keys.contains(&InputCode::Left) {
           self.player_state = PlayerState::Walking;
           self.vel_x += -move_speed * self.slope_accel * self.accel_rate;
           bus.ppu.sprites[self.anim.sprite_id].reverse_x = true;
         }
 
-        if keys.contains(&Keycode::Z) {
+        if keys.contains(&InputCode::Jump) {
           self.player_state = PlayerState::Jumping;
           self.vel_y = -self.jump_force;
           match &state.game {
-            crate::GameMode::Buglympics => {
+            crate::game::state::GameMode::Buglympics => {
               sounds::play_effect(bus, sounds::SFX::JumpA, 800);
             }
-            crate::GameMode::Spyder => {
+            crate::game::state::GameMode::Spyder => {
               sounds::play_effect(bus, sounds::SFX::JumpB, 800);
             }
           }
@@ -376,7 +375,7 @@ impl Player {
 
     // Buglympics - Check if crossed finish line
     match &state.game {
-      crate::GameMode::Buglympics => {
+      crate::game::state::GameMode::Buglympics => {
         let bl_event = state.buglympics.events.get(&state.event).unwrap();
         if (self.transform.scene_x - bl_event.finish_line[0] as f32).abs() < 16.0
           && (self.transform.scene_y - bl_event.finish_line[1] as f32).abs() < 48.0

@@ -12,8 +12,8 @@ use lentsys::ui::text::TextBox;
 use std::time::Instant;
 
 use crate::game::cutscene::Shot;
-use crate::game::GameMode;
-use crate::game::GameState;
+use crate::game::state::GameMode;
+use crate::game::state::GameState;
 
 use crate::game::native::NativeVideo;
 

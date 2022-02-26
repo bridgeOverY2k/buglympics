@@ -8,13 +8,14 @@ use sdl2::keyboard::Keycode;
 use sdl2::EventPump;
 
 use lentsys::lentsys::LentSysBus;
+use lentsys::ui::text::Text;
 use lentsys::ui::text::TextBox;
 
 use crate::game::menu::Menu;
 use crate::game::native::NativeVideo;
-use crate::game::GameState;
+use crate::game::state::{GameMode, GameState};
 
-pub fn run_event_select(
+pub fn run_nation_select(
   bus: &mut LentSysBus,
   events: &mut EventPump,
   texture: &mut sdl2::render::Texture,
@@ -26,16 +27,16 @@ pub fn run_event_select(
   let mut mt = lentsys::apu::music::MusicTracker::new(4);
   let mut last = 0.0;
 
-  let mut event_select = Menu {
-    name: String::from("Event Select"),
+  let mut nation_select = Menu {
+    name: String::from("NationSelect"),
     screen_x: 0,
     screen_y: 0,
     options: vec![
-      String::from("CROSS-COUNTRY BIATHLON"),
-      String::from("DOWNHILL BIATHLON"),
-      String::from("CRAGGY BIATHLON"),
+      String::from("ANTARTICA"),
+      String::from("EAST ARACHNYLVANIA"),
+      String::from("REP. OF WORMSTRALIA"),
     ],
-    option_positions: vec![[48, 64], [48, 128], [48, 192]],
+    option_positions: vec![[16, 64], [16, 128], [16, 192]],
     current_selection: 0,
     confirmed: false,
     text_tile_set_name: String::from("start_font_small"),
@@ -49,10 +50,10 @@ pub fn run_event_select(
     input_threshold: 5,
   };
 
-  event_select.load(bus);
+  nation_select.load(bus);
 
   let instruct = TextBox::new(
-    String::from("SELECT YOUR EVENT"),
+    String::from("SELECT YOUR NATION"),
     16.0,
     16.0,
     String::from("start_font"),
@@ -67,43 +68,13 @@ pub fn run_event_select(
   bus.ppu.tile_maps[last_tm].order = 1;
 
   state.check_game(bus);
+  swap_text(&state.game, bus);
 
-  match state.game {
-    crate::GameMode::Buglympics => {
-      let medal_places = ["GOLD", "SILVER", "BRONZE"];
-      for (key, medal_standing) in state.buglympics.medals.iter() {
-        for (place, medal) in medal_standing.medals.iter().enumerate() {
-          if medal.nation == state.buglympics.nation {
-            let x = 160.0;
-            let y = match key.as_str() {
-              "CROSS-COUNTRY BIATHLON" => 80.0,
-              "DOWNHILL BIATHLON" => 144.0,
-              "CRAGGY BIATHLON" => 204.0,
-              _ => 0.0,
-            };
+  //Music
+  audio_queue.queue(&bus.apu.samples[2].play());
+  audio_queue.resume();
 
-            TextBox::new(
-              format!("{0} - {1:.2}", medal_places[place], medal.time).to_string(),
-              x,
-              y,
-              String::from("start_font_small"),
-              String::from("start_font_small"),
-              8,
-              Some(16),
-              Some(1),
-            )
-            .to_tilemap(bus);
-
-            let last_idx = bus.ppu.tile_maps.len() - 1;
-            bus.ppu.tile_maps[last_idx].order = 1;
-          }
-        }
-      }
-    }
-    crate::GameMode::Spyder => {}
-  }
-
-  'event_select: loop {
+  'nation_select: loop {
     for event in events.poll_iter() {
       if let Event::Quit { .. } = event {
         println!("Exiting");
@@ -118,16 +89,19 @@ pub fn run_event_select(
 
     if keys.contains(&Keycode::Q) && state.swap_cooldown > 8 {
       state.swap_game(bus);
+
+      swap_text(&state.game, bus);
     }
+
+    nation_select.update_cursor(keys, bus);
+
     state.swap_cooldown += 1;
 
-    event_select.update_cursor(keys, bus);
-
-    if timer.elapsed().as_secs_f32() > 1.5 && event_select.confirmed {
-      state.event = event_select.options[event_select.current_selection].to_string();
-      break 'event_select;
+    if timer.elapsed().as_secs_f32() > 1.5 && nation_select.confirmed {
+      state.buglympics.nation = nation_select.options[nation_select.current_selection].to_string();
+      break 'nation_select;
     } else {
-      event_select.confirmed = false;
+      nation_select.confirmed = false;
     }
 
     /*
@@ -162,6 +136,30 @@ pub fn run_event_select(
     audio_queue.resume();
     last = elapsed;
   }
-  audio_queue.pause();
-  audio_queue.clear();
+}
+
+pub fn swap_text(game: &GameMode, bus: &mut LentSysBus) {
+  let last_tm = bus.ppu.tile_maps.len() - 1;
+  match game {
+    GameMode::Buglympics => {
+      bus.ppu.tile_maps[last_tm].update_text(String::from("SELECT YOUR NATION"));
+      bus.ppu.tile_maps[last_tm - 3].update_text(String::from("ANTARTICA"));
+      bus.ppu.tile_maps[last_tm - 2].update_text(String::from("EAST ARACHNYLVANIA"));
+      bus.ppu.tile_maps[last_tm - 1].update_text(String::from("REP. OF WORMSTRALIA"));
+      bus.ppu.tile_maps[last_tm].palette_id = 2;
+      bus.ppu.tile_maps[last_tm - 1].palette_id = 2;
+      bus.ppu.tile_maps[last_tm - 2].palette_id = 2;
+      bus.ppu.tile_maps[last_tm - 3].palette_id = 2;
+    }
+    GameMode::Spyder => {
+      bus.ppu.tile_maps[last_tm].update_text(String::from("SELECT YOUR TOOL"));
+      bus.ppu.tile_maps[last_tm - 3].update_text(String::from("SILENT AX"));
+      bus.ppu.tile_maps[last_tm - 2].update_text(String::from("QUIET BLUDGEON"));
+      bus.ppu.tile_maps[last_tm - 1].update_text(String::from("THE CRAB"));
+      bus.ppu.tile_maps[last_tm].palette_id = 1;
+      bus.ppu.tile_maps[last_tm - 1].palette_id = 1;
+      bus.ppu.tile_maps[last_tm - 2].palette_id = 1;
+      bus.ppu.tile_maps[last_tm - 3].palette_id = 1;
+    }
+  }
 }

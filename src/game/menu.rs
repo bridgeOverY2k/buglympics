@@ -1,12 +1,11 @@
 use std::collections::HashSet;
 
-use sdl2::keyboard::Keycode;
-
 use lentsys::lentsys::LentSysBus;
 use lentsys::ppu::sprite::Sprite;
 use lentsys::ui::text::TextBox;
 
-use crate::sounds;
+use crate::game::sounds;
+use crate::game::input::{InputCode};
 
 pub struct Menu {
   pub name: String,
@@ -72,9 +71,9 @@ impl Menu {
     sounds::prepare_effects(bus);
   }
 
-  pub fn update_cursor(&mut self, keys: HashSet<Keycode>, bus: &mut LentSysBus) {
+  pub fn update_cursor(&mut self, keys: HashSet<InputCode>, bus: &mut LentSysBus) {
     let mut any_input = false;
-    if keys.contains(&Keycode::Down) || keys.contains(&Keycode::Right) {
+    if keys.contains(&InputCode::Down) || keys.contains(&InputCode::Right) {
       self.input_time += 1;
       if self.input_time > self.input_threshold && self.options.len() - 1 > 0 {
         self.current_selection += 1;
@@ -85,7 +84,7 @@ impl Menu {
       any_input = true;
     }
 
-    if keys.contains(&Keycode::Up) || keys.contains(&Keycode::Left) {
+    if keys.contains(&InputCode::Up) || keys.contains(&InputCode::Left) {
       self.input_time += 1;
       if self.input_time > self.input_threshold && self.options.len() - 1 > 0 {
         if self.current_selection == 0 {
@@ -99,7 +98,7 @@ impl Menu {
       any_input = true;
     }
 
-    if keys.contains(&Keycode::Z) || keys.contains(&Keycode::Return) {
+    if keys.contains(&InputCode::Fire) || keys.contains(&InputCode::Confirm) {
       self.confirmed = true;
       any_input = true;
       // sound

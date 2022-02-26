@@ -12,7 +12,7 @@ use lentsys::ui::text::TextBox;
 
 use crate::game::menu::Menu;
 use crate::game::native::NativeVideo;
-use crate::game::GameState;
+use crate::game::state::GameState;
 
 pub fn run_medal_cere(
   bus: &mut LentSysBus,

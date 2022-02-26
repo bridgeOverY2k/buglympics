@@ -10,7 +10,7 @@ use lentsys::lentsys::LentSysBus;
 
 use crate::game::menu::Menu;
 use crate::game::native::NativeVideo;
-use crate::game::GameState;
+use crate::game::state::GameState;
 
 pub fn run_title_screen(
     bus: &mut LentSysBus,

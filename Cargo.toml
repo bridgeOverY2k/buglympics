@@ -3,9 +3,12 @@ name = "buglympics"
 version = "1.0.0"
 edition = "2018"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 lentsys={path="../../projects/lentsys"}
+
+[target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 sdl2="*"
 
-[build-dependencies]
-lentsys={path="../../projects/lentsys", features=["io"]}

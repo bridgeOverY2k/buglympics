@@ -1,14 +1,22 @@
-use lentsys::game_pak::asset::AssetCollection;
-use lentsys::game_pak::scene::Scene;
-use lentsys::game_pak::scene::SceneState;
-use lentsys::game_pak::GamePak;
-use lentsys::io::Prepare;
 
 pub fn main(){
+  // only rebuild binary if native
   pack_game();
 }
 
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+pub fn pack_game(){
+  println!("Game not re-packed")
+}
+
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 pub fn pack_game() {
+  println!("Packing game")
+  use lentsys::game_pak::asset::AssetCollection;
+  use lentsys::game_pak::scene::Scene;
+  use lentsys::game_pak::scene::SceneState;
+  use lentsys::game_pak::GamePak;
+  use lentsys::io::Prepare;
   // Prepare game asset binary from raw assets
   let mut gp = GamePak {
     name: String::from("Buglympics and Spyder"),
@@ -18,46 +26,32 @@ pub fn pack_game() {
         name: String::from("title_screen"),
         tile_set_names: vec![String::from("title_screen"), String::from("title_screen_hh")],
         tile_map_names: vec![String::from("title_screen")],
-        data_entities: vec![],
         sample_names: vec![String::from("frozen_lake")],
-        music_names: vec![],
-        state: SceneState::INITIAL,
+        ..Default::default()
       },
       Scene {
         name: String::from("attract_mode"),
-        tile_set_names: vec![],
-        tile_map_names: vec![],
-        data_entities: vec![],
         sample_names: vec![String::from("credits")],
-        music_names: vec![],
-        state: SceneState::INITIAL,
+        ..Default::default()
       },
       Scene {
         name: String::from("nation_select"),
         tile_set_names: vec![String::from("nation_select"), String::from("tool_select")],
         tile_map_names: vec![String::from("nation_select")],
-        data_entities: vec![],
         sample_names: vec![String::from("river")],
-        music_names: vec![],
-        state: SceneState::INITIAL,
+        ..Default::default()
       },
       Scene {
         name: String::from("event_select"),
         tile_set_names: vec![String::from("nation_select"), String::from("tool_select")],
         tile_map_names: vec![String::from("event_select")],
-        data_entities: vec![],
-        sample_names: vec![],
-        music_names: vec![],
-        state: SceneState::INITIAL,
+        ..Default::default()
       },
       Scene {
         name: String::from("arena"),
         tile_set_names: vec![String::from("arena"), String::from("arena_hh")],
         tile_map_names: vec![String::from("arena")],
-        data_entities: vec![],
-        sample_names: vec![],
-        music_names: vec![],
-        state: SceneState::INITIAL,
+        ..Default::default()
       },
       Scene {
         name: String::from("crosscounty"),
@@ -69,10 +63,8 @@ pub fn pack_game() {
           String::from("ant_walk"),
         ],
         tile_map_names: vec![String::from("crosscountry")],
-        data_entities: vec![],
         sample_names: vec![String::from("pachyderm")],
-        music_names: vec![],
-        state: SceneState::INITIAL,
+        ..Default::default()
       },
       Scene {
         name: String::from("downhill"),
@@ -84,10 +76,8 @@ pub fn pack_game() {
           String::from("ant_walk"),
         ],
         tile_map_names: vec![String::from("downhill")],
-        data_entities: vec![],
         sample_names: vec![String::from("pachyderm")],
-        music_names: vec![],
-        state: SceneState::INITIAL,
+        ..Default::default()
       },
       Scene {
         name: String::from("craggy"),
@@ -99,19 +89,13 @@ pub fn pack_game() {
           String::from("ant_walk"),
         ],
         tile_map_names: vec![String::from("craggy")],
-        data_entities: vec![],
         sample_names: vec![String::from("pachyderm")],
-        music_names: vec![],
-        state: SceneState::INITIAL,
+        ..Default::default()
       },
       Scene {
         name: String::from("victory"),
-        tile_set_names: vec![],
-        tile_map_names: vec![],
-        data_entities: vec![],
         sample_names: vec![String::from("pachyderm")],
-        music_names: vec![],
-        state: SceneState::INITIAL,
+        ..Default::default()
       },
     ],
   };

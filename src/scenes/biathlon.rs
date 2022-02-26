@@ -16,8 +16,8 @@ use std::time::Instant;
 use crate::game::native::NativeVideo;
 use crate::game::player::Player;
 use crate::game::sounds::prepare_effects;
-use crate::game::BuglympicsEventRecord;
-use crate::game::GameState;
+use crate::game::state::BuglympicsEventRecord;
+use crate::game::state::GameState;
 
 pub fn run_biathlon(
     bus: &mut LentSysBus,
@@ -140,7 +140,7 @@ pub fn run_biathlon(
         */
 
         match state.game {
-            crate::GameMode::Buglympics => {
+            crate::game::state::GameMode::Buglympics => {
                 
                 if !bl_finished {
                     bl_timer += time_delta;
@@ -161,7 +161,7 @@ pub fn run_biathlon(
                     bl_finished = true;
                 }
             }
-            crate::GameMode::Spyder => {
+            crate::game::state::GameMode::Spyder => {
 
                 if !spy_finished {
                     spy_timer -= time_delta;
@@ -189,7 +189,7 @@ pub fn run_biathlon(
                 if all && !spy_finished {
                     state.spyder.results.insert(
                         state.event.to_string(),
-                        crate::SpyderEventRecord {
+                        crate::game::state::SpyderEventRecord {
                             event: state.event.to_string(),
                             time_remaining: spy_timer,
                         },
@@ -297,7 +297,7 @@ pub fn run_biathlon(
 }
 
 pub fn data_entity_handler(data_entities: &Vec<lentsys::ecs::DataEntity>, state: &mut GameState) {
-    use crate::game::Target;
+    use crate::game::state::Target;
     for ent in data_entities.iter() {
         match ent.data_entity_type.as_str() {
             "target" => {
@@ -447,14 +447,14 @@ pub fn set_tile_attrs(state: &mut GameState, initial: bool) {
     }
 
     match &state.game {
-        crate::GameMode::Buglympics => {
+        crate::game::state::GameMode::Buglympics => {
             state
             .world
             .collision_set
             .tiles
             .remove_entry(&89);
         }
-        crate::GameMode::Spyder => {
+        crate::game::state::GameMode::Spyder => {
 
             state
             .world
