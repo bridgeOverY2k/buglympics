@@ -2,14 +2,14 @@ use std::collections::HashSet;
 
 use sdl2::keyboard::Keycode;
 
-use zingr::ecs::components::collision::BoxCollider;
-use zingr::ecs::components::collision::Collide;
-use zingr::ecs::components::collision::Ray;
-use zingr::ecs::components::shape::AnimatedSprite;
-use zingr::ecs::components::transform::Transform;
-use zingr::ppu::attr::TileAttr;
+use lentsys::ecs::components::collision::BoxCollider;
+use lentsys::ecs::components::collision::Collide;
+use lentsys::ecs::components::collision::Ray;
+use lentsys::ecs::components::shape::AnimatedSprite;
+use lentsys::ecs::components::transform::Transform;
+use lentsys::ppu::attr::TileAttr;
 
-use zingr::lentsys::LentSysBus;
+use lentsys::lentsys::LentSysBus;
 
 use crate::game::{GameMode, GameState};
 use crate::sounds;

@@ -6,8 +6,8 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::EventPump;
 
-use zingr::lentsys::LentSysBus;
-use zingr::ppu::text::TextBox;
+use lentsys::lentsys::LentSysBus;
+use lentsys::ui::text::TextBox;
 
 use std::time::Instant;
 
@@ -22,7 +22,7 @@ pub fn run_attract_mode(
   events: &mut EventPump,
   texture: &mut sdl2::render::Texture,
   vid: &mut NativeVideo,
-  audio_queue: &mut AudioQueue<i16>,
+  audio_queue: &mut AudioQueue<f32>,
   state: &mut GameState,
 ) {
   let _timer = Instant::now();
@@ -152,7 +152,7 @@ pub fn run_attract_mode(
     },
   ];
 
-  audio_queue.queue(&bus.apu.samples[1].data);
+  audio_queue.queue(&bus.apu.samples[1].play());
   audio_queue.resume();
   match &state.game {
     GameMode::Buglympics => {
@@ -217,7 +217,7 @@ pub fn run_attract_mode(
     Process state
     */
 
-    let ppu_vals: Vec<u8> = zingr::ppu::render(
+    let ppu_vals: Vec<u8> = lentsys::ppu::render(
       &bus.ppu.config,
       &bus.ppu.palettes,
       &bus.ppu.tile_sets,

@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 use crate::game::menu::Menu;
 use std::collections::HashMap;
-use zingr::lentsys::LentSysBus;
-use zingr::ppu::text::TextBox;
+use lentsys::lentsys::LentSysBus;
+use lentsys::ui::text::TextBox;
 
 use sdl2::keyboard::Keycode;
 
@@ -19,12 +19,12 @@ impl Shot {
     bus.ppu.flush();
 
     // tile_set and palette
-    let (ts, pal) = bus.game_pak.assets.load_tile_set(self.tile_set_name.to_string());
+    let (ts, pal) = bus.game_pak.assets.get_tile_set(self.tile_set_name.to_string());
     bus.ppu.palettes.push(pal);
     bus.ppu.tile_sets.push(ts);
     
     // image tile_map
-    let mut tms = bus.game_pak.assets.load_tile_map(self.tile_map_name.to_string());
+    let mut tms = bus.game_pak.assets.get_tile_map(self.tile_map_name.to_string());
     for tm in tms.iter_mut() {
       tm.tile_set_id = bus.ppu.tile_sets.len() - 1;
       tm.palette_id = bus.ppu.palettes.len() - 1;

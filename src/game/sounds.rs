@@ -1,7 +1,7 @@
-use zingr::lentsys::LentSysBus;
-use zingr::apu::synth::Instrument;
-use zingr::apu::synth::{AmpEnvelope, WaveForm};
-use zingr::apu::music::AudioSource;
+use lentsys::lentsys::LentSysBus;
+use lentsys::apu::synth::Instrument;
+use lentsys::apu::synth::{AmpEnvelope, WaveForm};
+use lentsys::apu::music::AudioSource;
 
 pub enum SFX {
   JumpA,

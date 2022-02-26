@@ -1,8 +1,8 @@
-use zingr::apu::APUConfig;
-use zingr::game_pak::GamePak;
-use zingr::lentsys::LentSys;
-use zingr::lentsys::LentSysBus;
-use zingr::ppu::PPUConfig;
+use lentsys::apu::APUConfig;
+use lentsys::game_pak::GamePak;
+use lentsys::lentsys::LentSys;
+use lentsys::lentsys::LentSysBus;
+use lentsys::ppu::PPUConfig;
 
 extern crate sdl2;
 //use sdl2::audio::AudioQueue;
@@ -33,16 +33,6 @@ fn main() {
         PPUConfig {
             res_height: 240,
             res_width: 320,
-
-            map_count: 16,
-            map_size: 256 * 256,
-            set_count: 16,
-            set_size: 256 * 256,
-            palette_colors: 256,
-            palette_count: 256,
-
-            concur_map_count: 8,
-            concur_sprite_count: 512,
         },
     );
 
@@ -83,14 +73,14 @@ fn native_game(bus: &mut LentSysBus) -> Result<(), String> {
         channels: Some(1), // mono
         samples: None,     // default sample size
     };
-    let mut audio_queue = audio_subsystem.open_queue::<i16, _>(None, &desired_spec)?;
+    let mut audio_queue = audio_subsystem.open_queue::<f32, _>(None, &desired_spec)?;
     // *** Start of LentSys stuff ***
 
     let world = game::WorldState {
         gravity: 0.5,
-        collision_set: zingr::ppu::attr::AttrSet {
+        collision_set: lentsys::ppu::attr::AttrSet {
             tile_set_id: 0,
-            tiles: std::collections::BTreeMap::new(),
+            tiles: std::collections::HashMap::new(),
         },
     };
 

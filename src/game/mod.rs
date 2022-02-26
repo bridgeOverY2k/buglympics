@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use zingr::ppu::attr::AttrSet;
+use lentsys::ppu::attr::AttrSet;
 pub mod attract_mode;
 pub mod biathlon;
 pub mod cutscene;
@@ -68,9 +68,9 @@ impl MedalStanding {
 pub struct Target {
   pub entity_id: usize,
   pub hit: bool,
-  pub transform: zingr::ecs::components::transform::Transform,
-  pub collider: zingr::ecs::components::collision::BoxCollider,
-  pub anim: zingr::ecs::components::shape::AnimatedSprite
+  pub transform: lentsys::ecs::components::transform::Transform,
+  pub collider: lentsys::ecs::components::collision::BoxCollider,
+  pub anim: lentsys::ecs::components::shape::AnimatedSprite
 }
 
 impl Default for Target {
@@ -78,8 +78,8 @@ impl Default for Target {
     Self {
       entity_id: 0,
       hit: false,
-      transform: zingr::ecs::components::transform::Transform::new(0, 0.0, 0.0),
-      collider: zingr::ecs::components::collision::BoxCollider {
+      transform: lentsys::ecs::components::transform::Transform::new(0, 0.0, 0.0),
+      collider: lentsys::ecs::components::collision::BoxCollider {
         entity_id: 0,
         top: -8.0,
         bottom: 24.0,
@@ -89,7 +89,7 @@ impl Default for Target {
         collided: vec![],
         map_collided: vec![],
       },
-      anim: zingr::ecs::components::shape::AnimatedSprite {
+      anim: lentsys::ecs::components::shape::AnimatedSprite {
         entity_id: 0,
         sprite_id: 1,
         tile_set_id: 3,
@@ -108,7 +108,7 @@ impl Default for Target {
 }
 
 impl Target {
-  fn init(&mut self, bus: &mut zingr::lentsys::LentSysBus){
+  fn init(&mut self, bus: &mut lentsys::lentsys::LentSysBus){
 
     self
       .anim
@@ -121,7 +121,7 @@ impl Target {
 
   }
 
-  fn update(&mut self, bus: &mut zingr::lentsys::LentSysBus) {
+  fn update(&mut self, bus: &mut lentsys::lentsys::LentSysBus) {
     bus.ppu.sprites[self.anim.sprite_id].scene_x = self.transform.scene_x as u16;
     bus.ppu.sprites[self.anim.sprite_id].scene_y = self.transform.scene_y as u16;
   }
@@ -181,7 +181,7 @@ pub struct GameState {
 }
 
 impl GameState {
-  pub fn set_buglympics(&mut self, bus: &mut zingr::lentsys::LentSysBus) {
+  pub fn set_buglympics(&mut self, bus: &mut lentsys::lentsys::LentSysBus) {
     if !self.events.contains_key(&self.event) {
       return;
     }
@@ -207,7 +207,7 @@ impl GameState {
     self.game = GameMode::Buglympics;
   }
 
-  pub fn set_spyder(&mut self, bus: &mut zingr::lentsys::LentSysBus) {
+  pub fn set_spyder(&mut self, bus: &mut lentsys::lentsys::LentSysBus) {
     if !self.events.contains_key(&self.event) {
       return;
     }
@@ -233,7 +233,7 @@ impl GameState {
     self.game = GameMode::Spyder;
   }
 
-  pub fn check_game(&mut self, bus: &mut zingr::lentsys::LentSysBus) {
+  pub fn check_game(&mut self, bus: &mut lentsys::lentsys::LentSysBus) {
     match &self.game {
       GameMode::Buglympics => {
         self.set_buglympics(bus);
@@ -244,7 +244,7 @@ impl GameState {
     }
   }
 
-  pub fn swap_game(&mut self, bus: &mut zingr::lentsys::LentSysBus) {
+  pub fn swap_game(&mut self, bus: &mut lentsys::lentsys::LentSysBus) {
     if self.swap_cooldown > 10 {
       self.swap_cooldown = 0;
       match &self.game {

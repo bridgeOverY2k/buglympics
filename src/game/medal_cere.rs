@@ -7,8 +7,8 @@ use sdl2::audio::AudioQueue;
 use sdl2::EventPump;
 use sdl2::event::Event;
 
-use zingr::lentsys::LentSysBus;
-use zingr::ppu::text::TextBox;
+use lentsys::lentsys::LentSysBus;
+use lentsys::ui::text::TextBox;
 
 use crate::game::menu::Menu;
 use crate::game::native::NativeVideo;
@@ -19,7 +19,7 @@ pub fn run_medal_cere(
   events: &mut EventPump,
   texture: &mut sdl2::render::Texture,
   vid: &mut NativeVideo,
-  _audio_queue: &mut AudioQueue<i16>,
+  _audio_queue: &mut AudioQueue<f32>,
   state: &mut GameState,
 ) {
 
@@ -141,7 +141,7 @@ pub fn run_medal_cere(
       Process state
       */
 
-      let ppu_vals: Vec<u8> = zingr::ppu::render(
+      let ppu_vals: Vec<u8> = lentsys::ppu::render(
           &bus.ppu.config,
           &bus.ppu.palettes,
           &bus.ppu.tile_sets,

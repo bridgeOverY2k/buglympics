@@ -2,9 +2,9 @@ use std::collections::HashSet;
 
 use sdl2::keyboard::Keycode;
 
-use zingr::lentsys::LentSysBus;
-use zingr::ppu::sprite::Sprite;
-use zingr::ppu::text::TextBox;
+use lentsys::lentsys::LentSysBus;
+use lentsys::ppu::sprite::Sprite;
+use lentsys::ui::text::TextBox;
 
 use crate::sounds;
 

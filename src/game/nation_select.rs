@@ -7,9 +7,9 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::EventPump;
 
-use zingr::lentsys::LentSysBus;
-use zingr::ppu::text::Text;
-use zingr::ppu::text::TextBox;
+use lentsys::lentsys::LentSysBus;
+use lentsys::ui::text::Text;
+use lentsys::ui::text::TextBox;
 
 use crate::game::menu::Menu;
 use crate::game::native::NativeVideo;
@@ -20,11 +20,11 @@ pub fn run_nation_select(
   events: &mut EventPump,
   texture: &mut sdl2::render::Texture,
   vid: &mut NativeVideo,
-  audio_queue: &mut AudioQueue<i16>,
+  audio_queue: &mut AudioQueue<f32>,
   state: &mut GameState,
 ) {
   let timer = Instant::now();
-  let mut mt = zingr::apu::music::MusicTracker::new(4);
+  let mut mt = lentsys::apu::music::MusicTracker::new(4);
   let mut last = 0.0;
 
   let mut nation_select = Menu {
@@ -71,7 +71,7 @@ pub fn run_nation_select(
   swap_text(&state.game, bus);
 
   //Music
-  audio_queue.queue(&bus.apu.samples[2].data);
+  audio_queue.queue(&bus.apu.samples[2].play());
   audio_queue.resume();
 
   'nation_select: loop {
@@ -108,7 +108,7 @@ pub fn run_nation_select(
     Process state
     */
 
-    let ppu_vals: Vec<u8> = zingr::ppu::render(
+    let ppu_vals: Vec<u8> = lentsys::ppu::render(
       &bus.ppu.config,
       &bus.ppu.palettes,
       &bus.ppu.tile_sets,
@@ -122,7 +122,7 @@ pub fn run_nation_select(
     // sound
     let elapsed = timer.elapsed().as_secs_f32();
     let time_delta = elapsed - last;
-    let audio_data: Vec<i16> = zingr::apu::render_audio(
+    let audio_data: Vec<f32> = lentsys::apu::render_audio(
       time_delta,
       &mut bus.apu.music,
       &mut bus.apu.synths,

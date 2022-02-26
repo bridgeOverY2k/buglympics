@@ -5,10 +5,10 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 use sdl2::EventPump;
 
-use zingr::lentsys::LentSysBus;
-use zingr::ppu::attr::TileAttr;
-use zingr::ppu::text::Text;
-use zingr::ppu::text::TextBox;
+use lentsys::lentsys::LentSysBus;
+use lentsys::ppu::attr::TileAttr;
+use lentsys::ui::text::Text;
+use lentsys::ui::text::TextBox;
 
 use std::collections::HashSet;
 use std::time::Instant;
@@ -24,7 +24,7 @@ pub fn run_biathlon(
     events: &mut EventPump,
     texture: &mut sdl2::render::Texture,
     vid: &mut NativeVideo,
-    audio_queue: &mut AudioQueue<i16>,
+    audio_queue: &mut AudioQueue<f32>,
     state: &mut GameState,
 ) {
     // Set bg color
@@ -57,7 +57,7 @@ pub fn run_biathlon(
 
     let mut extra_text: String;
 
-    let mut mt = zingr::apu::music::MusicTracker::new(4);
+    let mut mt = lentsys::apu::music::MusicTracker::new(4);
 
     // Initialize Player
     let level = state.buglympics.events.get(&state.event).unwrap();
@@ -103,7 +103,7 @@ pub fn run_biathlon(
 
     state.last_event_success = false;
 
-    audio_queue.queue(&bus.apu.samples[3].data);
+    audio_queue.queue(&bus.apu.samples[3].play());
     audio_queue.resume();
 
     'biathlon: loop {
@@ -264,7 +264,7 @@ pub fn run_biathlon(
 
         // video
 
-        let ppu_vals: Vec<u8> = zingr::ppu::render(
+        let ppu_vals: Vec<u8> = lentsys::ppu::render(
             &bus.ppu.config,
             &bus.ppu.palettes,
             &bus.ppu.tile_sets,
@@ -277,7 +277,7 @@ pub fn run_biathlon(
 
         // sound
 
-        let audio_data: Vec<i16> = zingr::apu::render_audio(
+        let audio_data: Vec<f32> = lentsys::apu::render_audio(
             time_delta,
             &mut bus.apu.music,
             &mut bus.apu.synths,
@@ -296,7 +296,7 @@ pub fn run_biathlon(
     audio_queue.clear();
 }
 
-pub fn data_entity_handler(data_entities: &Vec<zingr::ecs::DataEntity>, state: &mut GameState) {
+pub fn data_entity_handler(data_entities: &Vec<lentsys::ecs::DataEntity>, state: &mut GameState) {
     use crate::game::Target;
     for ent in data_entities.iter() {
         match ent.data_entity_type.as_str() {
@@ -312,7 +312,7 @@ pub fn data_entity_handler(data_entities: &Vec<zingr::ecs::DataEntity>, state: &
                 }
 
                 let target = Target {
-                    transform: zingr::ecs::components::transform::Transform::new(
+                    transform: lentsys::ecs::components::transform::Transform::new(
                         0, scene_x, scene_y,
                     ),
                     ..Target::default()
