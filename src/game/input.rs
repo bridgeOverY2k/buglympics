@@ -1,6 +1,5 @@
 use lentsys::control::PadControl;
 use std::collections::HashSet;
-use wasm_bindgen::prelude::*;
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub enum InputCode {

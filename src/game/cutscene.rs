@@ -1,6 +1,3 @@
-use std::collections::HashSet;
-use crate::game::menu::Menu;
-use std::collections::HashMap;
 use lentsys::lentsys::LentSysBus;
 use lentsys::ui::text::TextBox;
 
@@ -33,10 +30,4 @@ impl Shot {
     self.text.to_tilemap(bus);    
     
   }
-}
-
-pub struct Prompt {
-  pub displayed: bool,
-  pub menu: Menu,
-  pub next_shot: usize
 }

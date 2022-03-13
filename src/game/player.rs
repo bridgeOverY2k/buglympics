@@ -17,7 +17,6 @@ use crate::game::input::{InputCode};
 pub enum PlayerState {
   Standing,
   Walking,
-  Running,
   Jumping,
 }
 
@@ -427,17 +426,12 @@ impl Player {
         self.anim.tile_range = [0, 0];
         self.anim.jump_to(0, &mut bus.ppu.sprites);
       }
-      _ => {}
     }
 
     if self.transform.scene_y > 205.0 * 16.0 {
       self.transform.scene_x = 100.0;
       self.transform.scene_y = 100.0;
     }
-
-    //self
-    //  .skis
-    //  .update(&self.transform, bus.ppu.sprites[self.anim.sprite_id].reverse_x, bus, &state.game);
 
     bus.ppu.sprites[self.anim.sprite_id].scene_x = self.transform.scene_x as u16;
     bus.ppu.sprites[self.anim.sprite_id].scene_y = self.transform.scene_y as u16;
