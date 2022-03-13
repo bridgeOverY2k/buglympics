@@ -49,16 +49,18 @@ pub fn init(bus: &mut LentSysBus, state: &mut GameState) {
 
   state.check_game(bus);
   swap_text(&state.game, bus);
+
+  state.menu.update_cursor(&state.inputs, bus);
 }
 
 pub fn update(bus: &mut LentSysBus, state: &mut GameState) {
+
+  state.menu.update_cursor(&state.inputs, bus);
   
   if state.inputs.contains(&InputCode::Swap) && state.swap_cooldown > 8 {
     state.swap_game(bus);
     swap_text(&state.game, bus);
   }
-
-  state.menu.update_cursor(&state.inputs, bus);
 
   if state.input_cooldown == 0 && state.menu.confirmed {
     

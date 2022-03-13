@@ -62,7 +62,6 @@ impl BlSpy {
   }
 
   pub fn update(&mut self) {
-    let mut repeat = false;
     let mut won_all = true;
 
     // If the current scene is not RUNNING, it is most likely INITIAL or COMPLETE.
@@ -79,7 +78,7 @@ impl BlSpy {
       }
       
       // it's over!
-      if won_all && !repeat {
+      if won_all {
         self.state.current_scene = 8;
       }
 
@@ -89,7 +88,7 @@ impl BlSpy {
 
     self.state.inputs = game::input::map_input(self.bus.controllers[0]);
 
-    log(format!("{:?}", self.state.input_cooldown).to_string().as_str());
+    //log(format!("{:?}", self.state.input_cooldown).to_string().as_str());
     
     if self.bus.game_pak.scenes[self.state.current_scene].state == SceneState::RUNNING {
       match self.state.current_scene {
@@ -111,6 +110,14 @@ impl BlSpy {
           
           scenes::event_select::update(&mut self.bus, &mut self.state);
         
+        },
+        4 => {
+          
+          scenes::medal_cere::update(&mut self.bus, &mut self.state);
+        
+        },
+        8 => {
+          scenes::victory::update(&mut self.bus, &mut self.state);
         },
         5.. => {
           scenes::biathlon::update(&mut self.bus, &mut self.state);
@@ -148,6 +155,12 @@ impl BlSpy {
       3 => {
         scenes::event_select::init(&mut self.bus, &mut self.state);
       },
+      4 => {
+        scenes::medal_cere::init(&mut self.bus, &mut self.state);
+      },
+      8 => {
+        scenes::victory::init(&mut self.bus, &mut self.state);
+      }
       5.. => {
         scenes::biathlon::init(&mut self.bus, &mut self.state);
       },

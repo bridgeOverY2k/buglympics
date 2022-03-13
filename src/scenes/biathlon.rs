@@ -136,7 +136,7 @@ pub fn update(bus: &mut LentSysBus, state: &mut GameState) {
                 // set this scene as complete
                 bus.game_pak.scenes[state.current_scene].state = SceneState::COMPLETE;
 
-                state.current_scene = 0;
+                state.current_scene = 4;
             }
         }
     }
@@ -154,7 +154,7 @@ pub fn update(bus: &mut LentSysBus, state: &mut GameState) {
         // set this scene as complete
         bus.game_pak.scenes[state.current_scene].state = SceneState::COMPLETE;
 
-        state.current_scene = 0;
+        state.current_scene = 4;
     }
 
     /*
@@ -193,7 +193,7 @@ pub fn update(bus: &mut LentSysBus, state: &mut GameState) {
         // set this scene as complete
         bus.game_pak.scenes[state.current_scene].state = SceneState::COMPLETE;
 
-        state.current_scene = 0;
+        state.current_scene = 4;
     }
 
     // Game Hot Swap
