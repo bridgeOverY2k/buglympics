@@ -11,7 +11,7 @@ use lentsys::lentsys::LentSysBus;
 use lentsys::ui::text::TextBox;
 
 use crate::game::menu::Menu;
-use crate::game::native::NativeVideo;
+use crate::native::NativeVideo;
 use crate::game::state::GameState;
 
 pub fn run_medal_cere(

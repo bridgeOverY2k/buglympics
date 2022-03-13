@@ -11,15 +11,19 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::render::Texture;
 use sdl2::render::TextureAccess;
 
+pub mod scenes;
+use scenes::attract_mode::run_attract_mode;
+use scenes::biathlon::run_biathlon;
+use scenes::event_select::run_event_select;
+use scenes::title_screen::run_title_screen;
+use scenes::medal_cere::run_medal_cere;
+use scenes::nation_select::run_nation_select;
+use scenes::victory::run_victory;
+
+pub mod native;
+use native::NativeVideo;
+
 pub mod game;
-use game::attract_mode::run_attract_mode;
-use game::biathlon::run_biathlon;
-use game::event_select::run_event_select;
-use game::title_screen::run_title_screen;
-use game::medal_cere::run_medal_cere;
-use game::nation_select::run_nation_select;
-use game::victory::run_victory;
-use game::native::NativeVideo;
 use game::*;
 
 fn main() {

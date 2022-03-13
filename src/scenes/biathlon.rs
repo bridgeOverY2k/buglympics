@@ -1,44 +1,22 @@
-extern crate sdl2;
-use sdl2::audio::AudioQueue;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
-use sdl2::EventPump;
-
 use lentsys::lentsys::LentSysBus;
 use lentsys::ppu::attr::TileAttr;
 use lentsys::ui::text::Text;
 use lentsys::ui::text::TextBox;
+use lentsys::game_pak::scene::SceneState;
 
-use std::collections::HashSet;
-use std::time::Instant;
-
-use crate::game::native::NativeVideo;
+use crate::game::input::InputCode;
 use crate::game::player::Player;
 use crate::game::sounds::prepare_effects;
 use crate::game::state::BuglympicsEventRecord;
 use crate::game::state::GameState;
 
-pub fn run_biathlon(
-    bus: &mut LentSysBus,
-    events: &mut EventPump,
-    texture: &mut sdl2::render::Texture,
-    vid: &mut NativeVideo,
-    audio_queue: &mut AudioQueue<f32>,
-    state: &mut GameState,
-) {
-    // Set bg color
-    let bg_color = &bus.ppu.palettes[0].data[0];
-    vid.canvas
-        .set_draw_color(Color::RGB(bg_color[0], bg_color[1], bg_color[2]));
-
-    // Prepare timer
-    let mut last = 0.0;
-    let timer = Instant::now();
-    let mut bl_timer = 0.0;
-    let mut spy_timer = state.spyder.events[&state.event].time_limit;
-    let mut bl_finished = false;
-    let mut spy_finished = false;
+pub fn init(bus: &mut LentSysBus, state: &mut GameState) {
+    // set timers and end state
+    state.scene_frames = 0;
+    state.bl_timer = 0.0;
+    state.spy_timer = state.spyder.events[&state.event].time_limit;
+    state.bl_finished = false;
+    state.spy_finished = false;
 
     TextBox::new(
         String::from("00:00.00"),
@@ -52,27 +30,20 @@ pub fn run_biathlon(
     )
     .to_tilemap(bus);
 
-    let timer_map_idx = bus.ppu.tile_maps.len() - 1;
-
-
-    let mut extra_text: String;
-
-    let mut mt = lentsys::apu::music::MusicTracker::new(4);
+    // Palette swap for nation
+    if &state.buglympics.nation == "EAST ARACHNYLVANIA" {
+        bus.ppu.palettes[2].data[4] = [162, 0, 0, 255];
+        state.player.launcher.projectile_tile = 1;
+    } else if &state.buglympics.nation == "REP. OF WORMSTRALIA" {
+        bus.ppu.palettes[2].data[4] = [22, 111, 2, 255];
+        state.player.launcher.projectile_tile = 2;
+    }
 
     // Initialize Player
     let level = state.buglympics.events.get(&state.event).unwrap();
 
-    let mut player = Player::new(1, level.start_line);
-    player.init(bus);
-
-    // Palette swap for nation
-    if &state.buglympics.nation == "EAST ARACHNYLVANIA" {
-        bus.ppu.palettes[2].data[4] = [162, 0, 0, 255];
-        player.launcher.projectile_tile = 1;
-    } else if &state.buglympics.nation == "REP. OF WORMSTRALIA" {
-        bus.ppu.palettes[2].data[4] = [22, 111, 2, 255];
-        player.launcher.projectile_tile = 2;
-    }
+    state.player = Player::new(1, level.start_line);
+    state.player.init(bus);
 
     // Initialize Spyder targets
     {
@@ -85,11 +56,8 @@ pub fn run_biathlon(
             tgt.init(bus);
         }
     }
-    //println!("palette {:?}", bus.ppu.palettes[3].data);
-    //println!("tileset {:?}", bus.ppu.tile_sets[3].data);
 
-    // Sounds
-    prepare_effects(bus);
+    state.hit_count = 0;
 
     // Set tile attributes for collision and slope
     set_tile_attrs(state, true);
@@ -103,197 +71,166 @@ pub fn run_biathlon(
 
     state.last_event_success = false;
 
-    audio_queue.queue(&bus.apu.samples[3].play());
-    audio_queue.resume();
+    
+}
 
-    'biathlon: loop {
-        /*
-        Check for inputs
-        */
-        for event in events.poll_iter() {
-            if let Event::Quit { .. } = event {
-                println!("Exiting");
-                std::process::exit(0);
-            };
+pub fn update(bus: &mut LentSysBus, state: &mut GameState) {
+    /*
+    Update timer and check finished conditions
+    */
+
+    let time_delta = 0.01667; // assume 1 frame constant time
+    let elapsed = state.scene_frames as f32 * time_delta;
+
+    match state.game {
+        crate::game::state::GameMode::Buglympics => {
+            if !state.bl_finished {
+                state.bl_timer += time_delta;
+            }
+
+            // Check if medal worthy
+            if state.player.finished && !state.bl_finished {
+                //println!("Finished at : {}", &clock_time);
+                let medals = state.buglympics.medals.get_mut(&state.event).unwrap();
+                medals.check_result(BuglympicsEventRecord {
+                    nation: state.buglympics.nation.to_string(),
+                    event: state.event.to_string(),
+                    time: state.bl_timer,
+                });
+                state.bl_finished = true;
+            }
         }
+        crate::game::state::GameMode::Spyder => {
+            if !state.spy_finished {
+                state.spy_timer -= time_delta;
+            }
 
-        let keys: HashSet<Keycode> = events
-            .keyboard_state()
-            .pressed_scancodes()
-            .filter_map(Keycode::from_scancode)
-            .collect();
+            
+            let mut all = true;
+            let event = state.spyder.events.get_mut(&state.event).unwrap();
+            // Are all targets hit?
+            for tgt in event.targets.iter_mut() {
+                state.hit_count += tgt.hit as u8;
+                tgt.update(bus);
+                if all {
+                    all = tgt.hit;
+                }
+            }
 
-        /*
-        Check time
-        */
-
-        let clock_time: f32;
-        let elapsed = timer.elapsed().as_secs_f32();
-        let time_delta = elapsed - last;
-        let next_screen_pos = [
-            (player.transform.scene_x - 100.0) as i16,
-            (player.transform.scene_y - 100.0) as i16,
-        ];
-
-        /*
-        Update timer and check finished conditions
-        */
-
-        match state.game {
-            crate::game::state::GameMode::Buglympics => {
-                
-                if !bl_finished {
-                    bl_timer += time_delta;
-                } 
-                
-                clock_time = bl_timer;
-                extra_text = String::from("");
-
-                // Check if medal worthy
-                if player.finished && !bl_finished {
-                    //println!("Finished at : {}", &clock_time);
-                    let medals = state.buglympics.medals.get_mut(&state.event).unwrap();
-                    medals.check_result(BuglympicsEventRecord {
-                        nation: state.buglympics.nation.to_string(),
+            if all && !state.spy_finished {
+                state.spyder.results.insert(
+                    state.event.to_string(),
+                    crate::game::state::SpyderEventRecord {
                         event: state.event.to_string(),
-                        time: bl_timer,
-                    });
-                    bl_finished = true;
-                }
+                        time_remaining: state.spy_timer,
+                    },
+                );
+
+                state.spy_finished = true;
             }
-            crate::game::state::GameMode::Spyder => {
 
-                if !spy_finished {
-                    spy_timer -= time_delta;
-                }
+            // Times up
+            if state.spy_timer < 0.0 && !state.spy_finished {
+                state.last_event_success = false;
 
-                clock_time = spy_timer;
+                // set this scene as complete
+                bus.game_pak.scenes[state.current_scene].state = SceneState::COMPLETE;
 
-                let mut hit_count = 0;
-                let mut all = true;
-                let event = state.spyder.events.get_mut(&state.event).unwrap();
-                // Are all targets hit?
-                for tgt in event.targets.iter_mut() {
-                    hit_count += tgt.hit as u8;
-                    tgt.update(bus);
-                    if all {
-                        all = tgt.hit;
-                    }
-                }
-
-                extra_text = format!(
-                    "HIT {}/{}",
-                    hit_count, event.targets.len()
-                  );
-
-                if all && !spy_finished {
-                    state.spyder.results.insert(
-                        state.event.to_string(),
-                        crate::game::state::SpyderEventRecord {
-                            event: state.event.to_string(),
-                            time_remaining: spy_timer,
-                        },
-                    );
-
-                    spy_finished = true;
-                }
-
-                // Times up
-                if clock_time < 0.0 && !spy_finished {
-                    state.last_event_success = false;
-                    break 'biathlon;
-                }
+                state.current_scene = 0;
             }
         }
-
-        last = elapsed;
-
-        /*
-        Display Timer
-        */
-
-        let time = format!(
-            "{}\n{}:{}.{}",
-            extra_text,
-            clock_time as u32 / 60,
-            clock_time as u32 % 60,
-            ((clock_time / clock_time.floor() - 1.0) * 1000.0) as u32
-        )
-        .to_string();
-        bus.ppu.tile_maps[timer_map_idx].update_text(time);
-
-        /*
-        Event Complete?
-        */
-
-        if bl_finished && spy_finished {
-            state.events.get_mut(&state.event).unwrap().both_complete = true;
-            state.last_event_success = true;
-            break 'biathlon;
-        }
-
-        /*
-        Update game
-        */
-
-        // Player
-        player.update(bus, &keys, state);
-
-        // catch if fall off bottom of map
-        if player.transform.scene_y + 96.0 > bus.ppu.screen_state.map_max_y as f32 {
-            state.last_event_success = false;
-            break 'biathlon;
-        }
-
-        // Game Hot Swap
-        if keys.contains(&Keycode::Q) {
-            state.swap_game(bus);
-            set_tile_attrs(state, false);
-        }
-        state.swap_cooldown += 1;
-
-        // Camera
-
-        bus.ppu
-            .screen_state
-            .lerp(next_screen_pos, time_delta * 10.0);
-
-        /*
-        Process state
-        */
-
-        // video
-
-        let ppu_vals: Vec<u8> = lentsys::ppu::render(
-            &bus.ppu.config,
-            &bus.ppu.palettes,
-            &bus.ppu.tile_sets,
-            &bus.ppu.tile_maps,
-            &bus.ppu.screen_state,
-            &mut bus.ppu.sprites,
-        );
-
-        vid.render_frame(ppu_vals, texture);
-
-        // sound
-
-        let audio_data: Vec<f32> = lentsys::apu::render_audio(
-            time_delta,
-            &mut bus.apu.music,
-            &mut bus.apu.synths,
-            &mut bus.apu.samples,
-            &mut mt,
-            &mut bus.apu.fx_queue,
-            &bus.apu.config,
-        );
-        //println!("{:?}", bus.apu.fx_queue.len());
-        audio_queue.queue(&audio_data); //&bus.apu.samples[0].data);
-        audio_queue.resume();
-
-        //std::thread::sleep(std::time::Duration::from_millis((time_delta * 1000.0) as u64));
     }
-    audio_queue.pause();
-    audio_queue.clear();
+
+    display_timer(state, bus);
+
+    /*
+    Event Complete?
+    */
+
+    if state.bl_finished && state.spy_finished {
+        state.events.get_mut(&state.event).unwrap().both_complete = true;
+        state.last_event_success = true;
+
+        // set this scene as complete
+        bus.game_pak.scenes[state.current_scene].state = SceneState::COMPLETE;
+
+        state.current_scene = 0;
+    }
+
+    /*
+    Update game
+    */
+
+    let next_screen_pos = [
+        (state.player.transform.scene_x - 100.0) as i16,
+        (state.player.transform.scene_y - 100.0) as i16,
+    ];
+
+
+    
+
+    // Player
+    let finish_line = state.buglympics.events.get(&state.event).unwrap().finish_line;
+
+    state.player.update(
+        bus, 
+        &state.inputs, 
+        &state.game, 
+        &state.world,
+        &mut state.spyder.events.get_mut(&state.event).unwrap().targets,
+        finish_line
+    );
+
+    // Camera
+    bus.ppu
+        .screen_state
+        .lerp(next_screen_pos, time_delta * 10.0);
+
+    // catch if fall off bottom of map
+    if state.player.transform.scene_y + 96.0 > bus.ppu.screen_state.map_max_y as f32 {
+        state.last_event_success = false;
+
+        // set this scene as complete
+        bus.game_pak.scenes[state.current_scene].state = SceneState::COMPLETE;
+
+        state.current_scene = 0;
+    }
+
+    // Game Hot Swap
+    if state.inputs.contains(&InputCode::Swap) {
+        state.swap_game(bus);
+        set_tile_attrs(state, false);
+    }
+    state.swap_cooldown += 1;
+
+    state.scene_frames += 1;
+}
+
+pub fn display_timer(state: &mut GameState, bus: &mut LentSysBus) {
+    let clock_time: f32;
+    let timer_map_idx = bus.ppu.tile_maps.len() - 1;
+
+    match state.game {
+        crate::game::state::GameMode::Buglympics => {
+            state.hit_text = String::from("");
+            clock_time = state.bl_timer;
+        }
+        crate::game::state::GameMode::Spyder => {
+            let event = state.spyder.events.get_mut(&state.event).unwrap();
+            state.hit_text = format!("HIT {}/{}", state.hit_count, event.targets.len());
+            clock_time = state.spy_timer;
+        }
+    }
+
+    let time = format!(
+        "{}\n{}:{}.{}",
+        state.hit_text,
+        clock_time as u32 / 60,
+        clock_time as u32 % 60,
+        ((clock_time / clock_time.floor() - 1.0) * 1000.0) as u32
+    )
+    .to_string();
+    bus.ppu.tile_maps[timer_map_idx].update_text(time);
 }
 
 pub fn data_entity_handler(data_entities: &Vec<lentsys::ecs::DataEntity>, state: &mut GameState) {
@@ -448,19 +385,14 @@ pub fn set_tile_attrs(state: &mut GameState, initial: bool) {
 
     match &state.game {
         crate::game::state::GameMode::Buglympics => {
-            state
-            .world
-            .collision_set
-            .tiles
-            .remove_entry(&89);
+            state.world.collision_set.tiles.remove_entry(&89);
         }
         crate::game::state::GameMode::Spyder => {
-
             state
-            .world
-            .collision_set
-            .tiles
-            .insert(89, TileAttr::Angle(0));
+                .world
+                .collision_set
+                .tiles
+                .insert(89, TileAttr::Angle(0));
         }
     }
 }

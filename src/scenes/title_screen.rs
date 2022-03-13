@@ -1,27 +1,11 @@
-use std::collections::HashSet;
-
-extern crate sdl2;
-use sdl2::audio::AudioQueue;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::EventPump;
-
 use lentsys::lentsys::LentSysBus;
-
+use lentsys::game_pak::scene::SceneState;
+use crate::game::input::InputCode;
 use crate::game::menu::Menu;
-use crate::game::native::NativeVideo;
-use crate::game::state::GameState;
+use crate::game::state::{GameState};
 
-pub fn run_title_screen(
-    bus: &mut LentSysBus,
-    events: &mut EventPump,
-    texture: &mut sdl2::render::Texture,
-    vid: &mut NativeVideo,
-    audio_queue: &mut AudioQueue<f32>,
-    state: &mut GameState,
-) {
-
-    let mut title_screen = Menu {
+pub fn init(bus: &mut LentSysBus, state: &mut GameState) {
+    state.menu = Menu {
         name: String::from("MainMenu"),
         screen_x: 0,
         screen_y: 0,
@@ -40,76 +24,30 @@ pub fn run_title_screen(
         input_threshold: 30,
     };
 
-    let mut mt = lentsys::apu::music::MusicTracker::new(4);
-    let mut last = 0.0;
-    let timer = std::time::Instant::now();
+    state.menu.load(bus);
+}
 
-    title_screen.load(bus);
+pub fn update(bus: &mut LentSysBus, state: &mut GameState){
 
-    audio_queue.queue(&bus.apu.samples[0].play());
-    audio_queue.resume();
+    if state.inputs.contains(&InputCode::Swap) {
 
-    'title_screen: loop {
-        for event in events.poll_iter() {
-            if let Event::Quit { .. } = event {
-                println!("Exiting");
-                std::process::exit(0);
-            };
-        }
-        let keys: HashSet<Keycode> = events
-            .keyboard_state()
-            .pressed_scancodes()
-            .filter_map(Keycode::from_scancode)
-            .collect();
-
-        if keys.contains(&Keycode::Q) {
-            state.swap_game(bus);
-        }
-        state.swap_cooldown += 1;
-
-        title_screen.update_cursor(keys, bus);
-
-        
-
-        if title_screen.confirmed && title_screen.current_selection == 0 {
-            break 'title_screen;
-        } else {
-            title_screen.confirmed = false;
-        }
-
-        /*
-        Process state
-        */
-
-        let ppu_vals: Vec<u8> = lentsys::ppu::render(
-            &bus.ppu.config,
-            &bus.ppu.palettes,
-            &bus.ppu.tile_sets,
-            &bus.ppu.tile_maps,
-            &bus.ppu.screen_state,
-            &mut bus.ppu.sprites,
-        );
-
-        vid.render_frame(ppu_vals, texture);
-
-        // sound
-        let elapsed = timer.elapsed().as_secs_f32();
-        let time_delta = elapsed - last;
-        let audio_data: Vec<f32> = lentsys::apu::render_audio(
-            time_delta,
-            &mut bus.apu.music,
-            &mut bus.apu.synths,
-            &mut bus.apu.samples,
-            &mut mt,
-            &mut bus.apu.fx_queue,
-            &bus.apu.config
-        );
-        //println!("{:?}", bus.apu.fx_queue.len());
-        audio_queue.queue(&audio_data);//&bus.apu.samples[0].data);
-        audio_queue.resume();
-        last = elapsed;
+        state.swap_game(bus);
+    
     }
 
-    audio_queue.pause();
-    audio_queue.clear();
+    if state.inputs.contains(&InputCode::Confirm) {
+        
+        state.menu.confirmed = true;
+        
+        // set this scene as complete
+        bus.game_pak.scenes[state.current_scene].state = SceneState::COMPLETE;
+
+        // set next scene
+        state.current_scene = 1;
+
+    }
+
+
+
+    state.swap_cooldown += 1;
 }

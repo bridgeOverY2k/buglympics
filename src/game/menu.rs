@@ -71,7 +71,7 @@ impl Menu {
     sounds::prepare_effects(bus);
   }
 
-  pub fn update_cursor(&mut self, keys: HashSet<InputCode>, bus: &mut LentSysBus) {
+  pub fn update_cursor(&mut self, keys: &HashSet<InputCode>, bus: &mut LentSysBus) {
     let mut any_input = false;
     if keys.contains(&InputCode::Down) || keys.contains(&InputCode::Right) {
       self.input_time += 1;

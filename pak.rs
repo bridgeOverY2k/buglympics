@@ -1,21 +1,9 @@
+use lentsys::game_pak::asset::AssetCollection;
+use lentsys::game_pak::scene::Scene;
+use lentsys::game_pak::GamePak;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn main(){
-  // only rebuild binary if native
-  pack_game();
-}
-
-#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-pub fn pack_game(){
-  println!("Game not re-packed")
-}
-
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-pub fn pack_game() {
-  println!("Packing game")
-  use lentsys::game_pak::asset::AssetCollection;
-  use lentsys::game_pak::scene::Scene;
-  use lentsys::game_pak::scene::SceneState;
-  use lentsys::game_pak::GamePak;
   use lentsys::io::Prepare;
   // Prepare game asset binary from raw assets
   let mut gp = GamePak {

@@ -9,7 +9,7 @@ use lentsys::ppu::attr::TileAttr;
 
 use lentsys::lentsys::LentSysBus;
 
-use crate::game::state::{GameMode, GameState};
+use crate::game::state::{GameMode, WorldState, Target};
 use crate::game::sounds;
 use crate::game::input::{InputCode};
 
@@ -61,7 +61,7 @@ impl Default for Projectile {
 }
 
 impl Projectile {
-  fn update(&mut self, bus: &mut LentSysBus, state: &mut GameState) {
+  fn update(&mut self, bus: &mut LentSysBus, world: &WorldState, targets: &mut Vec<Target>) {
     if self.distance_traveled > self.max_distance {
       self.expired = true;
       bus.ppu.sprites[self.anim.sprite_id].hide = true;
@@ -77,11 +77,9 @@ impl Projectile {
         self.speed,
         self.speed as u8,
       );
-      let (_mc_idx, mut hit) = get_nearest_map_collision(&mut sensor, bus, state);
+      let (_mc_idx, mut hit) = get_nearest_map_collision(&mut sensor, bus, world);
 
-      let event = state.spyder.events.get_mut(&state.event).unwrap();
-
-      for tgt in event.targets.iter_mut() {
+      for tgt in targets.iter_mut() {
         sensor.check_box_collision([0.0, 0.0], &tgt.collider, &tgt.transform);
         //println!("{:?}", sensor.collided);
         if sensor.collided.len() > 0 {
@@ -267,7 +265,15 @@ impl Player {
     //.skis.init(bus);
   }
 
-  pub fn update(&mut self, bus: &mut LentSysBus, keys: &HashSet<InputCode>, state: &mut GameState) {
+  pub fn update(
+    &mut self, 
+    bus: &mut LentSysBus, 
+    keys: &HashSet<InputCode>, 
+    game_mode: &GameMode,
+    world: &WorldState,
+    targets: &mut Vec<Target>,
+    finish_line: [u16; 2],
+  ) {
     /*
       Roughly, the order should be
       - Inputs
@@ -285,7 +291,7 @@ impl Player {
     }
 
     if keys.contains(&InputCode::Fire) {
-      match &state.game {
+      match game_mode {
         GameMode::Buglympics => {
           move_speed = self.run_speed;
           self.anim.rate = 8;
@@ -320,7 +326,7 @@ impl Player {
         self.vel_y = if self.vel_y >= 10.0 {
           10.0
         } else {
-          self.vel_y + state.world.gravity
+          self.vel_y + world.gravity
         };
       }
       PlayerState::Standing => {
@@ -340,7 +346,7 @@ impl Player {
         if keys.contains(&InputCode::Jump) {
           self.player_state = PlayerState::Jumping;
           self.vel_y = -self.jump_force;
-          match &state.game {
+          match &game_mode {
             crate::game::state::GameMode::Buglympics => {
               sounds::play_effect(bus, sounds::SFX::JumpA, 800);
             }
@@ -369,16 +375,16 @@ impl Player {
     }
 
     // COLLISION
-    self.check_side_collision(bus, &state);
+    self.check_side_collision(bus, &world);
     self.grounded = false;
-    self.check_ground_collision(bus, &state);
+    self.check_ground_collision(bus, &world);
 
     // Buglympics - Check if crossed finish line
-    match &state.game {
+    match game_mode {
       crate::game::state::GameMode::Buglympics => {
-        let bl_event = state.buglympics.events.get(&state.event).unwrap();
-        if (self.transform.scene_x - bl_event.finish_line[0] as f32).abs() < 16.0
-          && (self.transform.scene_y - bl_event.finish_line[1] as f32).abs() < 48.0
+        
+        if (self.transform.scene_x - finish_line[0] as f32).abs() < 16.0
+          && (self.transform.scene_y - finish_line[1] as f32).abs() < 48.0
         {
           self.finished = true;
         }
@@ -393,7 +399,7 @@ impl Player {
 
     // PROJECTILES
     for proj in self.launcher.projectiles.iter_mut() {
-      proj.update(bus, state);
+      proj.update(bus, world, targets);
     }
 
     match &self.player_state {
@@ -437,7 +443,7 @@ impl Player {
     bus.ppu.sprites[self.anim.sprite_id].scene_y = self.transform.scene_y as u16;
   }
 
-  fn check_ground_collision(&mut self, bus: &mut LentSysBus, state: &GameState) {
+  fn check_ground_collision(&mut self, bus: &mut LentSysBus, world: &WorldState) {
     // if jumping, early exit;
     if self.vel_y < 0.0 {
       return;
@@ -455,22 +461,22 @@ impl Player {
     )];
 
     // find tile_map collisions
-    let (sensor_idx, mc_idx, hit) = self.get_nearest_map_collision(&mut sensors, bus, state);
+    let (sensor_idx, mc_idx, hit) = self.get_nearest_map_collision(&mut sensors, bus, world);
 
     if hit {
       self.grounded = hit;
       let hit_mc = &sensors[sensor_idx].map_collided[mc_idx];
-      self.slope = self.find_surface_height(hit_mc.tile_id, hit_mc.point[0], state);
-      self.slope_accel = self.find_surface_angle(hit_mc.tile_id, hit_mc.point[0], state);
+      self.slope = self.find_surface_height(hit_mc.tile_id, hit_mc.point[0], world);
+      self.slope_accel = self.find_surface_angle(hit_mc.tile_id, hit_mc.point[0], world);
 
       //if it is a solid tile, check above
       if self.slope == 16.0 {
         let tile_above = hit_mc.map_loc_id
-          - bus.ppu.tile_maps[state.world.collision_set.tile_set_id].columns as usize;
+          - bus.ppu.tile_maps[world.collision_set.tile_set_id].columns as usize;
         let tile_type_above =
-          bus.ppu.tile_maps[state.world.collision_set.tile_set_id].data[tile_above];
-        self.slope += self.find_surface_height(tile_type_above as usize, hit_mc.point[0], state);
-        self.slope_accel = self.find_surface_angle(hit_mc.tile_id, hit_mc.point[0], state);
+          bus.ppu.tile_maps[world.collision_set.tile_set_id].data[tile_above];
+        self.slope += self.find_surface_height(tile_type_above as usize, hit_mc.point[0], world);
+        self.slope_accel = self.find_surface_angle(hit_mc.tile_id, hit_mc.point[0], world);
       }
 
       // if hit detected early (up to 8 pixels), correct
@@ -488,7 +494,7 @@ impl Player {
     }
   }
 
-  pub fn check_side_collision(&mut self, bus: &LentSysBus, state: &GameState) {
+  pub fn check_side_collision(&mut self, bus: &LentSysBus, world: &WorldState) {
     // check moving direction
     let mut side: usize = 1;
     let mut offset: f32 = self.collider.right;
@@ -508,10 +514,10 @@ impl Player {
       4,
     )];
 
-    let (sensor_idx, mc_idx, hit) = self.get_nearest_map_collision(&mut sensors, bus, state);
+    let (sensor_idx, mc_idx, hit) = self.get_nearest_map_collision(&mut sensors, bus, world);
     if hit {
       let hit_mc = &sensors[sensor_idx].map_collided[mc_idx];
-      let surface = self.find_surface_height(hit_mc.tile_id, hit_mc.point[0], state);
+      let surface = self.find_surface_height(hit_mc.tile_id, hit_mc.point[0], world);
       let err = hit_mc.point[0] - sensors[sensor_idx].origin[0];
       /*println!("origin {:?} collision {:?} distance {} err {}",
       sensors[sensor_idx].origin,
@@ -528,8 +534,8 @@ impl Player {
     }
   }
 
-  fn find_surface_height(&mut self, tile_id: usize, x_overlap: f32, state: &GameState) -> f32 {
-    let tile_attr = state.world.collision_set.tiles.get(&tile_id);
+  fn find_surface_height(&mut self, tile_id: usize, x_overlap: f32, world: &WorldState) -> f32 {
+    let tile_attr = world.collision_set.tiles.get(&tile_id);
     match tile_attr {
       Some(TileAttr::Angle(ang)) => {
         let tables = [
@@ -557,8 +563,8 @@ impl Player {
     }
   }
 
-  pub fn find_surface_angle(&mut self, tile_id: usize, _x_overlap: f32, state: &GameState) -> f32 {
-    let tile_attr = state.world.collision_set.tiles.get(&tile_id);
+  pub fn find_surface_angle(&mut self, tile_id: usize, _x_overlap: f32, world: &WorldState) -> f32 {
+    let tile_attr = world.collision_set.tiles.get(&tile_id);
     match tile_attr {
       Some(TileAttr::Angle(ang)) => {
         let accel_table = [0.0, 0.5, 0.25, 0.25, 0.0];
@@ -574,7 +580,7 @@ impl Player {
     &mut self,
     sensors: &mut Vec<Ray>,
     bus: &LentSysBus,
-    state: &GameState,
+    world: &WorldState,
   ) -> (usize, usize, bool) {
     let mut hit = false;
     let mut sensor_idx = 0;
@@ -583,10 +589,10 @@ impl Player {
     for (i, s) in sensors.iter_mut().enumerate() {
       s.check_tile_collision(
         [0.0, 0.0],
-        &bus.ppu.tile_maps[state.world.collision_set.tile_set_id],
+        &bus.ppu.tile_maps[world.collision_set.tile_set_id],
       );
       for (j, mc) in s.map_collided.iter().enumerate() {
-        if state.world.collision_set.tiles.contains_key(&mc.tile_id) {
+        if world.collision_set.tiles.contains_key(&mc.tile_id) {
           let distance_from_collision = (s.origin[1] - mc.point[1]).abs();
           if distance_from_collision < nearest_collision_distance {
             nearest_collision_distance = distance_from_collision;
@@ -606,7 +612,7 @@ impl Player {
 pub fn get_nearest_map_collision(
   sensor: &mut Ray,
   bus: &LentSysBus,
-  state: &GameState,
+  world: &WorldState,
 ) -> (usize, bool) {
   let mut hit = false;
   let mut mc_idx = 0;
@@ -614,11 +620,11 @@ pub fn get_nearest_map_collision(
 
   sensor.check_tile_collision(
     [0.0, 0.0],
-    &bus.ppu.tile_maps[state.world.collision_set.tile_set_id],
+    &bus.ppu.tile_maps[world.collision_set.tile_set_id],
   );
   for (j, mc) in sensor.map_collided.iter().enumerate() {
     //println!("{:?}", mc);
-    if state.world.collision_set.tiles.contains_key(&mc.tile_id) {
+    if world.collision_set.tiles.contains_key(&mc.tile_id) {
       let distance_from_collision = (sensor.origin[1] - mc.point[1]).abs();
       if distance_from_collision < nearest_collision_distance {
         nearest_collision_distance = distance_from_collision;

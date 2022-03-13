@@ -15,7 +15,7 @@ use crate::game::cutscene::Shot;
 use crate::game::state::GameMode;
 use crate::game::state::GameState;
 
-use crate::game::native::NativeVideo;
+use crate::native::NativeVideo;
 
 pub fn run_victory(
   bus: &mut LentSysBus,

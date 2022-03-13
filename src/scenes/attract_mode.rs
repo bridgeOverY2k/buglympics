@@ -1,34 +1,15 @@
-use std::collections::HashSet;
-
-extern crate sdl2;
-use sdl2::audio::AudioQueue;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::EventPump;
-
 use lentsys::lentsys::LentSysBus;
 use lentsys::ui::text::TextBox;
-
-use std::time::Instant;
-
+use lentsys::game_pak::scene::SceneState;
 use crate::game::cutscene::Shot;
+use crate::game::input::InputCode;
 use crate::game::state::GameMode;
 use crate::game::state::GameState;
 
-use crate::game::native::NativeVideo;
-
-pub fn run_attract_mode(
-  bus: &mut LentSysBus,
-  events: &mut EventPump,
-  texture: &mut sdl2::render::Texture,
-  vid: &mut NativeVideo,
-  audio_queue: &mut AudioQueue<f32>,
-  state: &mut GameState,
-) {
-  let _timer = Instant::now();
-  let mut current_shot = 0;
-  let mut input_cooldown = 15;
-  let buglympics_shots = vec![
+pub fn init(bus: &mut LentSysBus, state: &mut GameState) {
+  state.current_shot = 0;
+  state.input_cooldown = 15;
+  state.bl_shots = vec![
     Shot {
       tile_map_name: String::from("cut_01_arrival"),
       tile_set_name: String::from("buglympics_shot_01"),
@@ -91,7 +72,7 @@ pub fn run_attract_mode(
     },
   ];
 
-  let spyder_shots = vec![
+  state.spyder_shots = vec![
     Shot {
       tile_map_name: String::from("cut_01_arrival"),
       tile_set_name: String::from("spyder_shot_01"),
@@ -152,82 +133,59 @@ pub fn run_attract_mode(
     },
   ];
 
-  audio_queue.queue(&bus.apu.samples[1].play());
-  audio_queue.resume();
   match &state.game {
     GameMode::Buglympics => {
-      buglympics_shots[current_shot].load(bus);
+      state.bl_shots[state.current_shot].load(bus);
     }
     GameMode::Spyder => {
-      spyder_shots[current_shot].load(bus);
+      state.spyder_shots[state.current_shot].load(bus);
     }
   }
+}
 
-  'attract_mode: loop {
-    for event in events.poll_iter() {
-      if let Event::Quit { .. } = event {
-        println!("Exiting");
-        std::process::exit(0);
-      };
-    }
+pub fn update(bus: &mut LentSysBus, state: &mut GameState) {
 
-    let keys: HashSet<Keycode> = events
-      .keyboard_state()
-      .pressed_scancodes()
-      .filter_map(Keycode::from_scancode)
-      .collect();
+  // next shot, please
+  if state.inputs.contains(&InputCode::Confirm) && state.input_cooldown == 0 {
+    state.current_shot += 1;
+    state.input_cooldown = 15;
+    // if this was the last shot, the scene is over
+    // the length of both are the same.
+    if state.current_shot > state.bl_shots.len() - 1 {
 
+      // set this scene as complete
+      bus.game_pak.scenes[state.current_scene].state = SceneState::COMPLETE;
+      
+      state.current_scene = 2;
     
-
-    if keys.contains(&Keycode::Z) && input_cooldown == 0 {
-      current_shot += 1;
-      input_cooldown = 15;
-      if current_shot > buglympics_shots.len() - 1 {
-        break 'attract_mode;
-      }
+    } else {
       match &state.game {
         GameMode::Buglympics => {
-          buglympics_shots[current_shot].load(bus);
+          state.bl_shots[state.current_shot].load(bus);
         }
         GameMode::Spyder => {
-          spyder_shots[current_shot].load(bus);
+          state.spyder_shots[state.current_shot].load(bus);
         }
       }
     }
-
-    if keys.contains(&Keycode::Q) && input_cooldown == 0 {
-      state.swap_game(bus);
-      match &state.game {
-        GameMode::Buglympics => {
-          buglympics_shots[current_shot].load(bus);
-        }
-        GameMode::Spyder => {
-          spyder_shots[current_shot].load(bus);
-        }
-      }
-    }
-
-    state.swap_cooldown += 1;
-
-    if input_cooldown > 0 {
-      input_cooldown -= 1;
-    }
-
-    /*
-    Process state
-    */
-
-    let ppu_vals: Vec<u8> = lentsys::ppu::render(
-      &bus.ppu.config,
-      &bus.ppu.palettes,
-      &bus.ppu.tile_sets,
-      &bus.ppu.tile_maps,
-      &bus.ppu.screen_state,
-      &mut bus.ppu.sprites,
-    );
-
-    vid.render_frame(ppu_vals, texture);
   }
-  audio_queue.pause();
-  audio_queue.clear();
+
+  //swap game
+  if state.inputs.contains(&InputCode::Swap) && state.input_cooldown == 0 {
+    state.swap_game(bus);
+    match &state.game {
+      GameMode::Buglympics => {
+        state.bl_shots[state.current_shot].load(bus);
+      }
+      GameMode::Spyder => {
+        state.spyder_shots[state.current_shot].load(bus);
+      }
+    }
+  }
+
+  if state.input_cooldown > 0 {
+    state.input_cooldown -= 1;
+  }
+
+  state.swap_cooldown += 1;
 }

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>LentSys Web Example</title>
+    <style>
+        html,
+        body,
+        canvas {
+            width: 640px;
+            height: 480px;
+            position: absolute;
+            background: black;
+            outline: none;
+            z-index: 0;
+        }
+    </style>
+    
+</head>
+
+<body>
+    <button id="example">Load</button>
+    <canvas id="lentsys-canvas" width="320" height="240" tabindex='1'></canvas>
+    
+    <script type="module">
+    import init, {BlSpy, PadControl} from "./pkg/buglympics.js";
+    const wasm = await init();
+    const w = 320;
+    const h = 240;
+    const imageDataSize = h * w * 4;
+    const canvas = document.getElementById('lentsys-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled= false;
+    const imageData = new ImageData(w, h);
+
+    let lastFrame;
+    let lsw;
+    let game_pack_buffer;
+    let audioCtx;
+    let audioSrc;
+    let audioLength;
+    let audioBuffer;
+    let controller = PadControl.new();
+
+    document.querySelector('#example').addEventListener('click', loadExample);
+    document.querySelector('canvas').addEventListener('keydown', handleInput);
+    document.querySelector('canvas').addEventListener('keyup', handleInput);
+
+    function loadExample(event){
+        event.target.hidden = true;
+        audioCtx = new window.AudioContext();
+        audioSrc = audioCtx.createBufferSource();
+        audioSrc.loop = true;
+        audioLength =  1 / 60 * audioCtx.sampleRate;
+        audioBuffer = audioCtx.createBuffer(1, audioLength, audioCtx.sampleRate);
+        audioSrc.buffer = audioBuffer;
+        audioSrc.connect(audioCtx.destination);
+        audioSrc.start(0, 0);
+        console.log(audioCtx.state, audioCtx.sampleRate);
+        console.log(controller);
+
+        // Load the game pak binary
+        fetch('buglympics.bin')
+        .then(response => response && response.arrayBuffer())
+        .then(buffer => {
+            game_pack_buffer = new Uint8Array(buffer);
+
+            lsw = BlSpy.new(game_pack_buffer);
+          
+            //lsw.init();
+            
+            lastFrame = new Date();
+            render();
+        })
+    }
+
+    function handleInput(event){
+        event.preventDefault();
+        
+        let value = event.type == 'keydown' ? 255 : 0;
+
+        const keyMap = {
+            38: 'up',
+            40: 'down',
+            37: 'left',
+            39: 'right',
+            13: 'start',
+            65: 'x',
+            81: 'b',
+            90: 'a'
+        };
+
+        if (event.keyCode in keyMap){
+          controller[keyMap[event.keyCode]] = value;
+        }
+    }
+
+    function render(){
+        let currentFrame = new Date();
+        let timeDelta = (currentFrame.getTime() - lastFrame.getTime()) / 1000;
+
+        // input
+        
+        lsw.set_inputs(controller);
+        lsw.update();
+
+        // video
+        lsw.render_image();
+        const pixels = new Uint8Array(wasm.memory.buffer, lsw.get_image_data(), imageDataSize);
+        imageData.data.set(pixels);
+        ctx.putImageData(imageData, 0, 0);
+
+        // audio
+        // TODO: Only plays at correct rate when requesting ~ 1.0 sec audio
+        if (timeDelta > 1.0) {
+            audioSrc = audioCtx.createBufferSource();
+            lsw.render_audio(timeDelta);
+            audioLength = timeDelta * audioCtx.sampleRate + 1;
+            const samples = new Float32Array(wasm.memory.buffer, lsw.get_audio_data(), audioLength);
+            audioBuffer = audioCtx.createBuffer(1, audioLength, audioCtx.sampleRate);
+            audioBuffer.copyToChannel(samples, 0, 0);
+            audioSrc.buffer = audioBuffer;
+            audioSrc.connect(audioCtx.destination);
+            audioSrc.start();
+            lastFrame = currentFrame;
+        }
+
+        // window
+        window.requestAnimationFrame(render);
+    }
+
+    </script>
+</body>
+
+</html>

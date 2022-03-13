@@ -1,5 +1,12 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use lentsys::ppu::attr::AttrSet;
+use lentsys::apu::music::AudioSource;
+use lentsys::apu::music::MusicTracker;
+use lentsys::lentsys::LentSysBus;
+use crate::game::player::Player;
+use crate::game::menu::Menu;
+use crate::game::cutscene::Shot;
+use crate::game::input::InputCode;
 
 
 pub struct SpyderEvent {
@@ -158,14 +165,30 @@ pub enum GameMode {
 
 pub struct GameState {
   pub game: GameMode,
+  pub scene_frames: u32,
   pub swap_cooldown: u32,
+  pub input_cooldown: u32,
   pub current_scene: usize,
+  pub current_shot: usize,
   pub event: String,
   pub last_event_success: bool,
   pub events: HashMap<String, SceneMap>,
   pub world: WorldState,
   pub buglympics: BuglympicsState,
+  pub bl_timer: f32,
+  pub bl_finished: bool,
   pub spyder: SpyderState,
+  pub spy_timer: f32,
+  pub spy_finished: bool,
+  pub hit_count: u8,
+  pub hit_text: String,
+  pub player: Player,
+  pub menu: Menu,
+  pub music_tracker: MusicTracker,
+  pub spyder_shots: Vec<Shot>,
+  pub bl_shots: Vec<Shot>,
+  pub sfx_queue: Vec<(f32, AudioSource, usize, usize)>,
+  pub inputs: HashSet<InputCode>
 }
 
 impl GameState {
@@ -248,6 +271,9 @@ impl GameState {
 }
 
 pub fn init_game_state() -> GameState {
+
+  let music_tracker = lentsys::apu::music::MusicTracker::new(4);
+
   let world = WorldState {
     gravity: 0.5,
     collision_set: lentsys::ppu::attr::AttrSet {
@@ -392,10 +418,19 @@ pub fn init_game_state() -> GameState {
 
   let mut state = GameState {
     game: GameMode::Buglympics,
+    scene_frames: 0,
+    input_cooldown: 0,
     swap_cooldown: 0,
     current_scene: 0,
+    current_shot: 0,
     event: String::from("title_screen"),
     last_event_success: false,
+    bl_timer : 0.0,
+    spy_timer : 120.0,
+    hit_count: 0,
+    hit_text: String::from(""),
+    bl_finished : false,
+    spy_finished: false,
     events: vec![
       (
         String::from("title_screen"),
@@ -510,7 +545,37 @@ pub fn init_game_state() -> GameState {
     world,
     buglympics,
     spyder,
+    music_tracker,
+    player: Player::new(1, [0, 0]), // is not rendered till init is called
+    menu: Menu {
+      name: String::from("MainMenu"),
+      screen_x: 0,
+      screen_y: 0,
+      options: vec![String::from("PRESS ENTER")],
+      option_positions: vec![[112, 176]],
+      current_selection: 0,
+      confirmed: false,
+      text_tile_set_name: String::from("start_font_small"),
+      palette_name: String::from("start_font_small"),
+      font_size: 8,
+      cursor_tile_set_id: 1,
+      cursor_tile_id: 10,
+      cursor_sprite_id: 0,
+      cursor_offset: [-16, 0],
+      input_time: 0,
+      input_threshold: 30,
+    },
+    sfx_queue: vec![],
+    spyder_shots: vec![],
+    bl_shots: vec![],
+    inputs: HashSet::new()
   };
 
   return state;
+}
+
+// for lifetime of scene
+pub trait SceneAction {
+  fn init(&mut self, bus: &mut LentSysBus, state: &mut GameState);
+  fn update(&mut self, bus: &mut LentSysBus, state: &mut GameState) -> (Vec<u8>, Vec<f32>);
 }

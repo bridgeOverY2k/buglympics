@@ -1,33 +1,13 @@
-use std::collections::HashSet;
-use std::time::Instant;
-
-extern crate sdl2;
-use sdl2::audio::AudioQueue;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::EventPump;
-
 use lentsys::lentsys::LentSysBus;
-use lentsys::ui::text::Text;
-use lentsys::ui::text::TextBox;
-
+use lentsys::ui::text::{TextBox, Text};
+use lentsys::game_pak::scene::SceneState;
+use crate::game::input::InputCode;
 use crate::game::menu::Menu;
-use crate::game::native::NativeVideo;
 use crate::game::state::{GameMode, GameState};
 
-pub fn run_nation_select(
-  bus: &mut LentSysBus,
-  events: &mut EventPump,
-  texture: &mut sdl2::render::Texture,
-  vid: &mut NativeVideo,
-  audio_queue: &mut AudioQueue<f32>,
-  state: &mut GameState,
-) {
-  let timer = Instant::now();
-  let mut mt = lentsys::apu::music::MusicTracker::new(4);
-  let mut last = 0.0;
-
-  let mut nation_select = Menu {
+pub fn init(bus: &mut LentSysBus, state: &mut GameState) {
+  state.input_cooldown = 15;
+  state.menu = Menu {
     name: String::from("NationSelect"),
     screen_x: 0,
     screen_y: 0,
@@ -50,7 +30,7 @@ pub fn run_nation_select(
     input_threshold: 5,
   };
 
-  nation_select.load(bus);
+  state.menu.load(bus);
 
   let instruct = TextBox::new(
     String::from("SELECT YOUR NATION"),
@@ -69,73 +49,35 @@ pub fn run_nation_select(
 
   state.check_game(bus);
   swap_text(&state.game, bus);
+}
 
-  //Music
-  audio_queue.queue(&bus.apu.samples[2].play());
-  audio_queue.resume();
-
-  'nation_select: loop {
-    for event in events.poll_iter() {
-      if let Event::Quit { .. } = event {
-        println!("Exiting");
-        std::process::exit(0);
-      };
-    }
-    let keys: HashSet<Keycode> = events
-      .keyboard_state()
-      .pressed_scancodes()
-      .filter_map(Keycode::from_scancode)
-      .collect();
-
-    if keys.contains(&Keycode::Q) && state.swap_cooldown > 8 {
-      state.swap_game(bus);
-
-      swap_text(&state.game, bus);
-    }
-
-    nation_select.update_cursor(keys, bus);
-
-    state.swap_cooldown += 1;
-
-    if timer.elapsed().as_secs_f32() > 1.5 && nation_select.confirmed {
-      state.buglympics.nation = nation_select.options[nation_select.current_selection].to_string();
-      break 'nation_select;
-    } else {
-      nation_select.confirmed = false;
-    }
-
-    /*
-    Process state
-    */
-
-    let ppu_vals: Vec<u8> = lentsys::ppu::render(
-      &bus.ppu.config,
-      &bus.ppu.palettes,
-      &bus.ppu.tile_sets,
-      &bus.ppu.tile_maps,
-      &bus.ppu.screen_state,
-      &mut bus.ppu.sprites,
-    );
-
-    vid.render_frame(ppu_vals, texture);
-
-    // sound
-    let elapsed = timer.elapsed().as_secs_f32();
-    let time_delta = elapsed - last;
-    let audio_data: Vec<f32> = lentsys::apu::render_audio(
-      time_delta,
-      &mut bus.apu.music,
-      &mut bus.apu.synths,
-      &mut bus.apu.samples,
-      &mut mt,
-      &mut bus.apu.fx_queue,
-      &bus.apu.config,
-    );
-    //println!("{:?}", bus.apu.fx_queue.len());
-    audio_queue.queue(&audio_data); //&bus.apu.samples[0].data);
-    audio_queue.resume();
-    last = elapsed;
+pub fn update(bus: &mut LentSysBus, state: &mut GameState) {
+  
+  if state.inputs.contains(&InputCode::Swap) && state.swap_cooldown > 8 {
+    state.swap_game(bus);
+    swap_text(&state.game, bus);
   }
+
+  state.menu.update_cursor(&state.inputs, bus);
+
+  if state.input_cooldown == 0 && state.menu.confirmed {
+    
+    state.buglympics.nation = state.menu.options[state.menu.current_selection].to_string();
+
+    // set this scene as complete
+    bus.game_pak.scenes[state.current_scene].state = SceneState::COMPLETE;
+
+    state.current_scene = 3;
+  
+  } else {
+    state.menu.confirmed = false;
+  }
+
+  if state.input_cooldown > 0 {
+    state.input_cooldown -= 1;
+  }
+
+  state.swap_cooldown += 1;
 }
 
 pub fn swap_text(game: &GameMode, bus: &mut LentSysBus) {
