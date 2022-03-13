@@ -8,6 +8,7 @@ use crate::game::state::GameState;
 
 pub fn init(bus: &mut LentSysBus, state: &mut GameState) {
   state.input_cooldown = 15;
+  state.event = String::from("title_screen"); //use same swap logic
   state.bl_shots = vec![Shot {
     tile_map_name: String::from("cut_01_arrival"),
     tile_set_name: String::from("buglympics_victory"),
@@ -61,7 +62,9 @@ pub fn init(bus: &mut LentSysBus, state: &mut GameState) {
 }
 
 pub fn update(bus: &mut LentSysBus, state: &mut GameState) {
-  if state.inputs.contains(&InputCode::Swap) && state.input_cooldown == 0 {
+  
+  // swap
+  if state.inputs.contains(&InputCode::Swap) && state.swap_cooldown > 8 {
     state.swap_game(bus);
 
     match &state.game {

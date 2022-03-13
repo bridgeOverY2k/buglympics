@@ -1,5 +1,6 @@
 use lentsys::lentsys::LentSysBus;
 use lentsys::game_pak::scene::SceneState;
+use lentsys::apu::music::AudioSource;
 use crate::game::input::InputCode;
 use crate::game::menu::Menu;
 use crate::game::state::{GameState};
@@ -47,7 +48,6 @@ pub fn update(bus: &mut LentSysBus, state: &mut GameState){
 
     }
 
-
-
     state.swap_cooldown += 1;
+
 }

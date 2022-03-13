@@ -2,6 +2,7 @@ use lentsys::lentsys::LentSysBus;
 use lentsys::game_pak::scene::SceneState;
 use lentsys::ppu::{PPUConfig, PPU, render};
 use lentsys::apu::{APUConfig, APU, render_audio};
+use lentsys::apu::music::AudioSource;
 use lentsys::control::PadControl;
 use lentsys::game_pak::{GamePak};
 use wasm_bindgen::prelude::*;
@@ -86,35 +87,26 @@ impl BlSpy {
 
     } 
 
-    self.state.inputs = game::input::map_input(self.bus.controllers[0]);
+    
 
     //log(format!("{:?}", self.state.input_cooldown).to_string().as_str());
     
     if self.bus.game_pak.scenes[self.state.current_scene].state == SceneState::RUNNING {
       match self.state.current_scene {
         0 => {
-
           scenes::title_screen::update(&mut self.bus, &mut self.state);
-        
         }
         1 => {
-          
           scenes::attract_mode::update(&mut self.bus, &mut self.state);
         },
         2 => {
-          
           scenes::nation_select::update(&mut self.bus, &mut self.state);
-        
         },
         3 => {
-          
           scenes::event_select::update(&mut self.bus, &mut self.state);
-        
         },
         4 => {
-          
           scenes::medal_cere::update(&mut self.bus, &mut self.state);
-        
         },
         8 => {
           scenes::victory::update(&mut self.bus, &mut self.state);
@@ -123,7 +115,6 @@ impl BlSpy {
           scenes::biathlon::update(&mut self.bus, &mut self.state);
         },
         _ => {
-
           log("Scene not found");
         }
       }
@@ -193,7 +184,17 @@ impl BlSpy {
   }
 
   pub fn render_audio(&mut self, time_delta: f32){
+    let samples = 44100.0 * time_delta;
 
+    // bg music sample
+    if self.bus.apu.samples.len() > 0 {
+      self.state.sfx_queue.push(
+        (0.0, AudioSource::Sample, 0, samples as usize)
+      );
+    }
+    
+
+    //log(format!("{:?}", self.bus.apu.samples[0].data.len()).as_str());
     self.audio_data = render_audio(
       time_delta,
       &mut self.bus.apu.music,
@@ -207,6 +208,7 @@ impl BlSpy {
 
   pub fn set_inputs(&mut self, controller: &PadControl){
     self.bus.controllers[0] = *controller;
+    self.state.inputs = game::input::map_input(self.bus.controllers[0]);
   }
 
 }

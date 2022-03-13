@@ -171,7 +171,7 @@ pub fn update(bus: &mut LentSysBus, state: &mut GameState) {
   }
 
   //swap game
-  if state.inputs.contains(&InputCode::Swap) && state.input_cooldown == 0 {
+  if state.inputs.contains(&InputCode::Swap) && state.swap_cooldown > 8 {
     state.swap_game(bus);
     match &state.game {
       GameMode::Buglympics => {

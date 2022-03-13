@@ -113,11 +113,12 @@
 
         // audio
         // TODO: Only plays at correct rate when requesting ~ 1.0 sec audio
-        if (timeDelta > 1.0) {
+        if (timeDelta > 0.02) {
             audioSrc = audioCtx.createBufferSource();
             lsw.render_audio(timeDelta);
             audioLength = timeDelta * audioCtx.sampleRate + 1;
             const samples = new Float32Array(wasm.memory.buffer, lsw.get_audio_data(), audioLength);
+            //console.log(samples);
             audioBuffer = audioCtx.createBuffer(1, audioLength, audioCtx.sampleRate);
             audioBuffer.copyToChannel(samples, 0, 0);
             audioSrc.buffer = audioBuffer;

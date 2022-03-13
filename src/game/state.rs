@@ -416,7 +416,7 @@ pub fn init_game_state() -> GameState {
     results: vec![].into_iter().collect(),
   };
 
-  let mut state = GameState {
+  let state = GameState {
     game: GameMode::Buglympics,
     scene_frames: 0,
     input_cooldown: 0,
@@ -446,6 +446,7 @@ pub fn init_game_state() -> GameState {
           ..SceneMap::default()
         },
       ),
+      // no map needed for attract_mode
       (
         String::from("nation_select"),
         SceneMap {
@@ -523,22 +524,7 @@ pub fn init_game_state() -> GameState {
           ..SceneMap::default()
         },
       ),
-      (
-        String::from("victory"),
-        SceneMap {
-          scene: 8,
-          both_complete: false,
-          bl_tm_ts: vec![].into_iter().collect(),
-          bl_tm_pal: vec![].into_iter().collect(),
-          bl_sp_ts: vec![].into_iter().collect(),
-          bl_sp_pal: vec![].into_iter().collect(),
-
-          spy_tm_ts: vec![].into_iter().collect(),
-          spy_tm_pal: vec![].into_iter().collect(),
-          spy_sp_ts: vec![].into_iter().collect(),
-          spy_sp_pal: vec![].into_iter().collect(),
-        },
-      ),
+      // no map needed for victory
     ]
     .into_iter()
     .collect(),

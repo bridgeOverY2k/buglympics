@@ -71,6 +71,9 @@ pub fn init(bus: &mut LentSysBus, state: &mut GameState) {
 
     state.last_event_success = false;
 
+    // sounds
+    prepare_effects(bus);
+
     
 }
 
@@ -80,7 +83,6 @@ pub fn update(bus: &mut LentSysBus, state: &mut GameState) {
     */
 
     let time_delta = 0.01667; // assume 1 frame constant time
-    let elapsed = state.scene_frames as f32 * time_delta;
 
     match state.game {
         crate::game::state::GameMode::Buglympics => {
@@ -106,6 +108,7 @@ pub fn update(bus: &mut LentSysBus, state: &mut GameState) {
             }
 
             
+            state.hit_count = 0;
             let mut all = true;
             let event = state.spyder.events.get_mut(&state.event).unwrap();
             // Are all targets hit?
