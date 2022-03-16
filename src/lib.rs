@@ -35,8 +35,8 @@ impl BlSpy {
     
       console_error_panic_hook::set_once();
  
-      let w = 320;
-      let h = 240;
+      let w: u32 = 320;
+      let h: u32 = 240;
 
       let decoded_game_pak = GamePak::from_bytes(game_pak_bin);
 
@@ -53,8 +53,8 @@ impl BlSpy {
              }
           ),
           ppu: PPU::new(PPUConfig {
-            res_width: w,
-            res_height: h
+            res_width: w as u16,
+            res_height: h as u16
           }),
           game_pak: decoded_game_pak
         },
@@ -211,4 +211,20 @@ impl BlSpy {
     self.state.inputs = game::input::map_input(self.bus.controllers[0]);
   }
 
+}
+
+
+pub trait Native {
+  fn get_image(&self) -> &Vec<u8>;
+  fn get_audio(&self) -> &Vec<f32>;
+}
+
+impl Native for BlSpy {
+  fn get_image(&self) -> &Vec<u8> {
+    &self.image_data
+  }
+
+  fn get_audio(&self) -> &Vec<f32> {
+    &self.audio_data
+  }
 }

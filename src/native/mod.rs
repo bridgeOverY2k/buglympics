@@ -45,10 +45,10 @@ impl NativeVideo {
 
   pub fn render_frame(
     &mut self,
-    ppu_vals: Vec<u8>,
+    ppu_vals: &Vec<u8>,
     texture: &mut Texture
   ) {
-    texture.update(None, &ppu_vals, self.width as usize * 4).unwrap();
+    texture.update(None, ppu_vals, self.width as usize * 4).unwrap();
     self.canvas.clear();
     self.canvas.copy(&texture, None, None).unwrap();
     self.canvas.present();
