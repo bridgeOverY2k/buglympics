@@ -24,7 +24,7 @@ pub fn init(bus: &mut LentSysBus, state: &mut GameState) {
     text_tile_set_name: String::from("start_font_small"),
     palette_name: String::from("start_font_small"),
     font_size: 8,
-    cursor_tile_set_id: 1,
+    cursor_tile_set_id: 2,
     cursor_tile_id: 9,
     cursor_sprite_id: 0,
     cursor_offset: [-12, 0],

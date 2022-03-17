@@ -67,9 +67,7 @@
             game_pack_buffer = new Uint8Array(buffer);
 
             lsw = BlSpy.new(game_pack_buffer);
-          
-            //lsw.init();
-            
+
             lastFrame = new Date();
             render();
         })
@@ -101,8 +99,9 @@
         let timeDelta = (currentFrame.getTime() - lastFrame.getTime()) / 1000;
 
         // input
-        
         lsw.set_inputs(controller);
+
+        // update game
         lsw.update();
 
         // video
@@ -113,7 +112,6 @@
 
         // audio
         // TODO: Fix some clicks a pops on playback
-        
         audioSrc = audioCtx.createBufferSource();
         lsw.render_audio(timeDelta);
         audioLength = timeDelta * audioCtx.sampleRate + 1;
@@ -124,9 +122,10 @@
         audioSrc.buffer = audioBuffer;
         audioSrc.connect(audioCtx.destination);
         audioSrc.start();
+        
         lastFrame = currentFrame;
 
-        // window
+        // next frame
         window.requestAnimationFrame(render);
     }
 

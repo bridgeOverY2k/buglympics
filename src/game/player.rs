@@ -254,14 +254,9 @@ impl Player {
   }
 
   pub fn init(&mut self, bus: &mut LentSysBus) {
-    //self.shape.add_to_sprites(&mut bus.ppu.sprites, &self.transform);
-    //self.shape.shape[self.shape.current_frame].show(&mut bus.ppu.sprites);
     self
       .anim
       .add_to_sprites(&mut bus.ppu.sprites, &self.transform);
-
-    //self
-    //.skis.init(bus);
   }
 
   pub fn update(

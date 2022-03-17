@@ -85,23 +85,26 @@ fn main() -> Result<(), String>{
             .collect();
         
         keys_to_pad(&keys, &mut controller);
+        game.set_inputs(&controller);
 
         // update game
-        game.set_inputs(&controller);
         game.update();
+
+        // render frame
         game.render_image();
 
+        // render audio
         let elapsed = timer.elapsed().as_secs_f32();
         let time_delta = elapsed - last;
         game.render_audio(time_delta);
 
         last = elapsed;
 
+        // grab and set av outputs
         let image_data = game.get_image();
         let audio_data = game.get_audio();
-        // set av outputs
         vid.render_frame(image_data, &mut texture);
-        audio_queue.queue(audio_data); //&bus.apu.samples[0].data);
+        audio_queue.queue(audio_data);
         audio_queue.resume();
 
         controller.reset();
