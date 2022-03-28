@@ -14,9 +14,7 @@ path = "src/bin.rs"
 console_error_panic_hook="*"
 lentsys={path="../../projects/lentsys"}
 wasm-bindgen = { version = "0.2.63", features = ["serde-serialize"]}
+sdl2 = {version="*", optional=true}
 
-[target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
-sdl2="*"
-
-#[target.'cfg(not(target_arch = "wasm32"))'.build-dependencies]
-#lentsys={path="../../projects/lentsys", features = ["io"]}
+[features]
+native = ["sdl2","lentsys/io"]

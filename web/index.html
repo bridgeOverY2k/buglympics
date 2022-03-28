@@ -8,8 +8,8 @@
         html,
         body,
         canvas {
-            width: 640px;
-            height: 480px;
+            width: 800px;
+            height: 600px;
             position: absolute;
             background: black;
             outline: none;
@@ -22,7 +22,6 @@
 <body>
     <button id="example">Load</button>
     <canvas id="lentsys-canvas" width="320" height="240" tabindex='1'></canvas>
-    
     <script type="module">
     import init, {BlSpy, PadControl} from "./pkg/buglympics.js";
     const wasm = await init();
@@ -50,16 +49,15 @@
     function loadExample(event){
         event.target.hidden = true;
         audioCtx = new window.AudioContext();
+        audioCtx.resume();
         audioSrc = audioCtx.createBufferSource();
-        audioSrc.loop = true;
+        
         audioLength =  1 / 60 * audioCtx.sampleRate;
         audioBuffer = audioCtx.createBuffer(1, audioLength, audioCtx.sampleRate);
         audioSrc.buffer = audioBuffer;
         audioSrc.connect(audioCtx.destination);
-        audioSrc.start(0, 0);
-        console.log(audioCtx.state, audioCtx.sampleRate);
-        console.log(controller);
-
+        audioSrc.start();
+        
         // Load the game pak binary
         fetch('buglympics.bin')
         .then(response => response && response.arrayBuffer())
@@ -95,8 +93,6 @@
     }
 
     function render(){
-        let currentFrame = new Date();
-        let timeDelta = (currentFrame.getTime() - lastFrame.getTime()) / 1000;
 
         // input
         lsw.set_inputs(controller);
@@ -110,25 +106,46 @@
         imageData.data.set(pixels);
         ctx.putImageData(imageData, 0, 0);
 
-        // audio
-        // TODO: Fix some clicks a pops on playback
-        audioSrc = audioCtx.createBufferSource();
+        // Audio
+        // TODO: Fix some clicks and pops on playback
+        let currentFrame = new Date();
+        let timeDelta = (currentFrame.getTime() - lastFrame.getTime()) / 1000;
         lsw.render_audio(timeDelta);
-        audioLength = timeDelta * audioCtx.sampleRate + 1;
-        const samples = new Float32Array(wasm.memory.buffer, lsw.get_audio_data(), audioLength);
-        //console.log(samples);
-        audioBuffer = audioCtx.createBuffer(1, audioLength, audioCtx.sampleRate);
+        // this should match the number of samples generated
+        audioLength = Math.floor(timeDelta * audioCtx.sampleRate);
+        
+        const newSamples = new Float32Array(wasm.memory.buffer, lsw.get_audio_data(), audioLength);
+        const samples = queueSamples(timeDelta, audioCtx.sampleRate, audioBuffer, newSamples);
+        
+        audioBuffer = audioCtx.createBuffer(1, samples.length, audioCtx.sampleRate);
         audioBuffer.copyToChannel(samples, 0, 0);
+        
+        audioSrc = audioCtx.createBufferSource();
         audioSrc.buffer = audioBuffer;
         audioSrc.connect(audioCtx.destination);
-        audioSrc.start();
         
+        audioSrc.start(0);
         lastFrame = currentFrame;
-
+            
         // next frame
         window.requestAnimationFrame(render);
     }
 
+    function queueSamples(timeDelta, sampleRate, oldBuffer, newSamples){
+        let lastSamples = new Float32Array();
+        
+        if (timeDelta < oldBuffer.duration){
+            
+            let beginAt = Math.ceil((oldBuffer.duration - timeDelta) * sampleRate);
+            lastSamples = oldBuffer.getChannelData(0).slice(beginAt);
+        }
+
+        const samples = new Float32Array(lastSamples.length + newSamples.length);
+        samples.set(lastSamples);
+        samples.set(newSamples, lastSamples.length);
+
+        return samples;
+    }
     </script>
 </body>
 

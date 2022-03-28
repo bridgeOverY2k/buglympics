@@ -87,10 +87,6 @@ impl BlSpy {
 
     } 
 
-    
-
-    //log(format!("{:?}", self.state.input_cooldown).to_string().as_str());
-    
     if self.bus.game_pak.scenes[self.state.current_scene].state == SceneState::RUNNING {
       match self.state.current_scene {
         0 => {
@@ -184,7 +180,7 @@ impl BlSpy {
   }
 
   pub fn render_audio(&mut self, time_delta: f32){
-    let samples = 44100.0 * time_delta;
+    let samples = self.bus.apu.config.sample_rate * time_delta;
 
     // bg music sample
     if self.bus.apu.samples.len() > 0 {
@@ -193,8 +189,6 @@ impl BlSpy {
       );
     }
     
-
-    //log(format!("{:?}", self.bus.apu.samples[0].data.len()).as_str());
     self.audio_data = render_audio(
       time_delta,
       &mut self.bus.apu.music,
@@ -210,9 +204,7 @@ impl BlSpy {
     self.bus.controllers[0] = *controller;
     self.state.inputs = game::input::map_input(self.bus.controllers[0]);
   }
-
 }
-
 
 pub trait Native {
   fn get_image(&self) -> &Vec<u8>;

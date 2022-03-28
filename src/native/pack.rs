@@ -1,10 +1,10 @@
 use lentsys::game_pak::asset::AssetCollection;
 use lentsys::game_pak::scene::Scene;
 use lentsys::game_pak::GamePak;
+use lentsys::io::Prepare;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub fn main(){
-  use lentsys::io::Prepare;
+#[cfg(feature="native")]
+pub fn pack_game(){
   // Prepare game asset binary from raw assets
   let mut gp = GamePak {
     name: String::from("Buglympics and Spyder"),
@@ -93,4 +93,5 @@ pub fn main(){
 
   gp.assets.prepare();
   gp.to_binary(&String::from("./buglympics.bin"));
+  gp.to_binary(&String::from("./web/buglympics.bin"));
 }

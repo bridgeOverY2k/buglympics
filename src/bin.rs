@@ -9,6 +9,7 @@ use buglympics::{BlSpy, Native};
 
 pub mod native;
 use native::NativeVideo;
+use native::pack::pack_game;
 
 extern crate sdl2;
 use sdl2::event::Event;
@@ -19,6 +20,9 @@ use sdl2::render::Texture;
 use sdl2::render::TextureAccess;
 
 fn main() -> Result<(), String>{
+    // pack game
+    pack_game();
+
     // SDL init
     let sdl_context = sdl2::init()?;
     let mut events = sdl_context.event_pump().unwrap();
