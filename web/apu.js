@@ -2,22 +2,20 @@
 class APUWorklet extends AudioWorkletProcessor {
 
   constructor(options){
-    super();
-    console.log(options);
+    super(options);
+    this.port.onmessage = (e) => {
+      //console.log(e.data.audioDataPtr);
+      this.samples = e.data.samples;
+      console.log(this.samples);
+    }
   }
 
   process (inputs, outputs, parameters) {
     const output = outputs[0];
     const sampleSize = 128;
-    const sampleRate = 44100;
-    const time = sampleSize / sampleRate;
-    console.log(inputs, parameters);
-    inputs.lentsys.render_audio(time);
-    output.forEach(channel => {
-      for (let i = 0; i < channel; i++) {
-        channel[i] = new Float32Array(128).fill(0)//new Float32Array(inputs.wasmMemoryBuffer, inputs.lentsys.get_audio_data(), 128);;
-      }
-    })
+    //console.log(sampleSize);
+    output[0] = this.samples.slice(0, sampleSize);
+    //console.log(output[0]);
     return true
   }
 }
