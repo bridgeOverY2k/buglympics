@@ -94,17 +94,6 @@
         }
     }
 
-    async function startAudio(){
-        await audioCtx.audioWorklet.addModule("apu.js");
-        
-        apu = new AudioWorkletNode(audioCtx, 'apu-worklet', 
-            {processorOptions: {wasmMemory: wasm.memory.buffer}}
-        );
-        apu.connect(audioCtx.destination);
-
-        render();
-    }
-
     function render(){
 
         // input
@@ -121,51 +110,32 @@
 
         //audio
         renderAudio();
-
-        
         
         // next frame
         window.requestAnimationFrame(render);
     }
-    let lastPos = 0;
-    function ringBuffer(timeDelta, sampleRate, oldBuffer, newSamples){
-        
-        let lastSamples = oldBuffer.getChannelData(0);
-        
-        let cPos = audioCtx.getOutputTimestamp().performanceTime / 1000;
-        let delta = cPos - lastPos;
-        let beginAt = Math.min(lastSamples.length - 1, Math.max(0, Math.ceil((oldBuffer.duration - delta) * sampleRate)));
-        lastSamples = lastSamples.slice(beginAt);
-        
-        const samples = new Float32Array(lastSamples.length + newSamples.length);
-        samples.set(lastSamples);
-        samples.set(newSamples, lastSamples.length);
-        lastPos = cPos;
-        return samples;
-    }
+    
 
+    let audioTime = 0;
     function renderAudio(){
-        // TODO: Fix some clicks and pops on playback
-        
         let currentFrame = performance.now();
         let timeDelta =  (currentFrame - lastFrame) / 1000;
         lsw.render_audio(timeDelta);
         // This should match the number of samples generated
         audioLength = Math.floor(timeDelta * audioCtx.sampleRate);
-        const newSamples = new Float32Array(wasm.memory.buffer, lsw.get_audio_data(), audioLength);
-        const samples = ringBuffer(timeDelta, audioCtx.sampleRate, audioBuffer, newSamples);
-        console.log(samples.length, audioLength);
+        const samples = new Float32Array(wasm.memory.buffer, lsw.get_audio_data(), audioLength);
         let newAudioBuffer = audioCtx.createBuffer(1, samples.length, audioCtx.sampleRate);
         
         newAudioBuffer.copyToChannel(samples, 0, 0);
-        
-        audioSrc.stop();
         audioSrc = audioCtx.createBufferSource();
         audioSrc.buffer = newAudioBuffer;
-        let offset = (audioCtx.getOutputTimestamp().performanceTime / 1000 - lastPos);
-        //console.log(audioSrc.playbackRate);
-        audioSrc.start(0, offset);
         audioSrc.connect(audioCtx.destination);
+        
+        // Offset the playhead, otherswise clicks and pops
+        const latency = (audioCtx.outputLatency ||  audioCtx.baseLatency);
+        const playPos = Math.max(audioCtx.currentTime + latency, audioTime);
+        audioSrc.start(playPos);
+        audioTime = playPos + samples.length / audioCtx.sampleRate;
         
         audioBuffer = newAudioBuffer;
         lastFrame = currentFrame;
