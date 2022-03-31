@@ -32,8 +32,7 @@
     const ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled= false;
     const imageData = new ImageData(w, h);
-    
-    let lastFrame;
+
     let lsw;
     let game_pack_buffer;
 
@@ -68,7 +67,6 @@
 
             lsw = BlSpy.new(game_pack_buffer);
 
-            lastFrame = performance.now();
             render();
         })
     }
@@ -115,23 +113,25 @@
         window.requestAnimationFrame(render);
     }
     
-
+    let lastFrame = 0;
     let audioTime = 0;
     function renderAudio(){
-        let currentFrame = performance.now();
-        let timeDelta =  (currentFrame - lastFrame) / 1000;
+        let currentFrame = audioCtx.currentTime;
+        let timeDelta =  currentFrame - lastFrame;
+        
         lsw.render_audio(timeDelta);
         // This should match the number of samples generated
         audioLength = Math.floor(timeDelta * audioCtx.sampleRate);
         const samples = new Float32Array(wasm.memory.buffer, lsw.get_audio_data(), audioLength);
+
+        // web audio buffer copying
         let newAudioBuffer = audioCtx.createBuffer(1, samples.length, audioCtx.sampleRate);
-        
         newAudioBuffer.copyToChannel(samples, 0, 0);
         audioSrc = audioCtx.createBufferSource();
         audioSrc.buffer = newAudioBuffer;
         audioSrc.connect(audioCtx.destination);
         
-        // Offset the playhead, otherswise clicks and pops
+        // Offset the playhead, otherwise clicks and pops
         const latency = (audioCtx.outputLatency ||  audioCtx.baseLatency);
         const playPos = Math.max(audioCtx.currentTime + latency, audioTime);
         audioSrc.start(playPos);
