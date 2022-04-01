@@ -3,11 +3,18 @@ name = "buglympics"
 version = "1.0.0"
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "buglympics"
+path = "src/bin.rs"
 
 [dependencies]
-zingr={path="../zingr"}
-sdl2="*"
+console_error_panic_hook="*"
+lentsys={path="../../projects/lentsys"}
+wasm-bindgen = { version = "0.2.63", features = ["serde-serialize"]}
+sdl2 = {version="*", optional=true}
 
-[build-dependencies]
-zingr={path="../zingr"}
+[features]
+native = ["sdl2","lentsys/io"]

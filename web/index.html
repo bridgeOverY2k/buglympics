@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>LentSys Web Example</title>
+    <style>
+        html,
+        body,
+        canvas {
+            width: 800px;
+            height: 600px;
+            position: absolute;
+            background: black;
+            outline: none;
+            z-index: 0;
+        }
+    </style>
+    
+</head>
+
+<body>
+    <button id="example">Load</button>
+    <canvas id="lentsys-canvas" width="320" height="240" tabindex='1'></canvas>
+    <script type="module">
+    import init, {BlSpy, PadControl} from "./pkg/buglympics.js";
+    const wasm = await init();
+    const w = 320;
+    const h = 240;
+    const imageDataSize = h * w * 4;
+    const canvas = document.getElementById('lentsys-canvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled= false;
+    const imageData = new ImageData(w, h);
+
+    let lsw;
+    let game_pack_buffer;
+
+    let apu;
+    let audioCtx;
+    let audioSrc;
+    let audioLength;
+    let audioBuffer;
+    let controller = PadControl.new();
+
+    document.querySelector('#example').addEventListener('click', loadExample);
+    document.querySelector('canvas').addEventListener('keydown', handleInput);
+    document.querySelector('canvas').addEventListener('keyup', handleInput);
+
+    function loadExample(event){
+        event.target.hidden = true;
+        audioCtx = new window.AudioContext({ latencyHint: 0 });
+        audioCtx.resume();
+        audioSrc = audioCtx.createBufferSource();
+        
+        audioLength =  1 / 60 * audioCtx.sampleRate;
+        audioBuffer = audioCtx.createBuffer(1, audioLength, audioCtx.sampleRate);
+        audioSrc.buffer = audioBuffer;
+        audioSrc.connect(audioCtx.destination);
+        audioSrc.start();
+        
+        // Load the game pak binary
+        fetch('buglympics.bin')
+        .then(response => response && response.arrayBuffer())
+        .then(buffer => {
+            game_pack_buffer = new Uint8Array(buffer);
+
+            lsw = BlSpy.new(game_pack_buffer);
+
+            render();
+        })
+    }
+
+    function handleInput(event){
+        event.preventDefault();
+        
+        let value = event.type == 'keydown' ? 255 : 0;
+
+        const keyMap = {
+            38: 'up',
+            40: 'down',
+            37: 'left',
+            39: 'right',
+            13: 'start',
+            65: 'x',
+            81: 'b',
+            90: 'a'
+        };
+
+        if (event.keyCode in keyMap){
+          controller[keyMap[event.keyCode]] = value;
+        }
+    }
+
+    function render(){
+
+        // input
+        lsw.set_inputs(controller);
+
+        // update game
+        lsw.update();
+
+        // video
+        lsw.render_image();
+        const pixels = new Uint8Array(wasm.memory.buffer, lsw.get_image_data(), imageDataSize);
+        imageData.data.set(pixels);
+        ctx.putImageData(imageData, 0, 0);
+
+        //audio
+        renderAudio();
+        
+        // next frame
+        window.requestAnimationFrame(render);
+    }
+    
+    let lastFrame = 0;
+    let audioTime = 0;
+    function renderAudio(){
+        let currentFrame = audioCtx.currentTime;
+        let timeDelta =  currentFrame - lastFrame;
+        
+        lsw.render_audio(timeDelta);
+        // This should match the number of samples generated
+        audioLength = Math.floor(timeDelta * audioCtx.sampleRate);
+        const samples = new Float32Array(wasm.memory.buffer, lsw.get_audio_data(), audioLength);
+
+        // web audio buffer copying
+        let newAudioBuffer = audioCtx.createBuffer(1, samples.length, audioCtx.sampleRate);
+        newAudioBuffer.copyToChannel(samples, 0, 0);
+        audioSrc = audioCtx.createBufferSource();
+        audioSrc.buffer = newAudioBuffer;
+        audioSrc.connect(audioCtx.destination);
+        
+        // Offset the playhead, otherwise clicks and pops
+        const latency = (audioCtx.outputLatency ||  audioCtx.baseLatency);
+        const playPos = Math.max(audioCtx.currentTime + latency, audioTime);
+        audioSrc.start(playPos);
+        audioTime = playPos + samples.length / audioCtx.sampleRate;
+        
+        audioBuffer = newAudioBuffer;
+        lastFrame = currentFrame;
+    }
+    </script>
+</body>
+
+</html>
